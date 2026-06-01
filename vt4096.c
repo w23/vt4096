@@ -152,12 +152,6 @@ static GLint compileShader(GLuint type, const char* src) {
 	return fsId;
 }
 
-//static const char* kVert =
-//"void main() {\n"
-//"	\n"
-//"}"
-//;
-
 static const char* kFrag =
 "uniform sampler2D atlas;"
 "uniform vec2 charSize;"
@@ -215,7 +209,7 @@ static const PIXELFORMATDESCRIPTOR kPfd = { sizeof(kPfd), 0,
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow) {
 	const WNDCLASSEX wndclass = {
 		.cbSize = sizeof(wndclass),
-		.lpszClassName = TEXT("vt4096"),
+		.lpszClassName = TEXT("VT4096"),
 		.lpfnWndProc = wndProc,
 		.hInstance = hInstance, // TODO NULL
 		//.hCursor = LoadCursor(NULL, IDC_ARROW), // TODO NULL
