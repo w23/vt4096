@@ -17,6 +17,8 @@ static struct GLOBALS__ {
 	int atlasWidth, atlasHeight;
 	void* atlasBits;
 	GLint atlasTexture;
+
+	GLint uniform_resolution;
 } g;
 
 static __forceinline void makeFontAtlas() {
@@ -34,7 +36,7 @@ static __forceinline void makeFontAtlas() {
 		ANSI_CHARSET, // iCharSet,
 		OUT_DEFAULT_PRECIS, // iOutPrecision,
 		CLIP_DEFAULT_PRECIS, // iClipPrecision,
-		DEFAULT_QUALITY, // iQuality,
+		NONANTIALIASED_QUALITY, // iQuality,
 		DEFAULT_PITCH | FF_DONTCARE, // iPitchAndFamily,
 		TEXT(FONT_NAME) // pszFaceName
 	);
@@ -68,8 +70,8 @@ static __forceinline void makeFontAtlas() {
 	for (int y = 0; y < 16; ++y) {
 		for (int x = 0; x < 16; ++x) {
 			unsigned char c = (y << 4) | x;
-			if (!isprint(c))
-				c = '?';
+			//if (!isprint(c))
+			//	c = '?';
 
 			TextOutA(text_dc, x * g.charWidth, y * g.charHeight, &c, 1);
 		}
@@ -80,8 +82,8 @@ static /*__forceinline*/ void initTexture(GLuint tex, int w, int h, int comp, in
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, comp, w, h, 0, GL_RGBA, type, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	/*
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	/*
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 	*/
@@ -158,11 +160,12 @@ static GLint compileShader(GLuint type, const char* src) {
 
 static const char* kFrag =
 "uniform sampler2D atlas;"
+"uniform vec2 charSize;"
 "uniform vec2 resolution;"
 "void main() {\n"
-"	vec2 uv = gl_FragCoord.xy / resolution;\n"
-"	gl_FragColor = texture(atlas, uv);\n"
-//"	gl_FragColor = vec4(0.,1.,0.,1.);\n"
+//"	vec2 char_coord = floor(gl_FragCoord.xy / charSize);\n"
+//"	vec2 char_uv = fract(gl_FragCoord.xy / charSize);\n"
+"	gl_FragColor = texture(atlas, gl_FragCoord.xy / textureSize(atlas, 0));\n"
 "}";
 
 //GLint makeProgram(const char* vert, const char* frag) {
@@ -178,6 +181,7 @@ GLint makeProgram(const char* frag) {
 }
 
 static void resize(int w, int h) {
+	glUniform2f(g.uniform_resolution, (float)w, (float)h);
 	glViewport(0, 0, w, h);
 }
 
@@ -193,6 +197,11 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	case WM_PAINT: paint(); break;
 	case WM_DESTROY: PostQuitMessage(0); break;
 	case WM_CLOSE: ExitProcess(0); break;
+	case WM_SIZE: {
+		const unsigned int width = (unsigned int)(lparam & 0xffff), height = (unsigned int)(lparam >> 16);
+		resize(width, height);
+		break;
+	}
 	default: return DefWindowProc(hwnd, msg, wparam, lparam);
 	}
 
@@ -219,12 +228,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	const int w = 80 * g.charWidth;
 	const int h = 32 * g.charHeight;
 
+	RECT r = { 0, 0, w, h };
+	const unsigned int windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	AdjustWindowRectEx(&r, windowStyle, FALSE, 0);
+
 	HWND hwnd = CreateWindowEx(
 		0, // window styles
 		wndclass.lpszClassName,
 		TEXT("VT4096"), // title
-		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
-		CW_USEDEFAULT, CW_USEDEFAULT, w, h,
+		windowStyle,
+		CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
 		NULL, NULL, hInstance, NULL);
 	g.hdc = GetDC(hwnd);
 
@@ -235,13 +248,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	glGenTextures(1, &g.atlasTexture);
 	initTexture(g.atlasTexture, g.atlasWidth, g.atlasHeight, GL_RGBA, GL_UNSIGNED_BYTE, g.atlasBits);
-	const GLint prog = makeProgram(kFrag);
-	const GLint uniform_atlas = glGetUniformLocation(prog, "atlas");
-	const GLint uniform_resolution = glGetUniformLocation(prog, "resolution");
-	glUseProgram(prog);
 	glBindTexture(GL_TEXTURE_2D, g.atlasTexture);
+
+	const GLint prog = makeProgram(kFrag);
+	g.uniform_resolution = glGetUniformLocation(prog, "resolution");
+
+	glUseProgram(prog);
+
+	const GLint uniform_atlas = glGetUniformLocation(prog, "atlas");
 	glUniform1i(uniform_atlas, 0);
-	glUniform2f(uniform_resolution, (float)w, (float)h);
+
+	const GLint uniform_charSize = glGetUniformLocation(prog, "charSize");
+	glUniform2f(uniform_charSize, (float)g.charWidth, (float)g.charHeight);
 
 	resize(w, h);
 
