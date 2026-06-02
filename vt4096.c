@@ -1,3 +1,5 @@
+#include "grid.h"
+
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #define WIN32_EXTRA_LEAN
@@ -8,15 +10,107 @@
 #include <gl/GL.h>
 #include "glext.h"
 
+#ifdef _DEBUG
+#include <stdio.h>
+static const char *getGlErrorStr(int error) {
+	switch (error) {
+	case GL_INVALID_ENUM: return "GL_INVALID_ENUM"; break;
+	case GL_INVALID_VALUE: return "GL_INVALID_VALUE"; break;
+	case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION"; break;
+#ifdef GL_STACK_OVERFLOW
+	case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW"; break;
+#endif
+#ifdef GL_STACK_UNDERFLOW
+	case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW"; break;
+#endif
+	case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY"; break;
+#ifdef GL_TABLE_TOO_LARGE
+	case GL_TABLE_TOO_LARGE: return "GL_TABLE_TOO_LARGE"; break;
+#endif
+	case 1286: return "INVALID FRAMEBUFFER"; break;
+	};
+	return "UNKNOWN";
+}
+
+static void checkGLError(const char* file, int line, const char* func) {
+	const int glerror = glGetError();
+	if (glerror != GL_NO_ERROR) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "%s:%d (%s)", file, line, func);
+		MessageBoxA(NULL, buf, getGlErrorStr(glerror), 0);
+		ExitProcess(1);
+	}
+}
+
+#define GL_CHECK() \
+	checkGLError(__FILE__, __LINE__, __func__)
+
+#else // no debug
+#define GL_CHECK()
+#endif
+
+	//X(PFNGLCREATESHADERPROGRAMV, glCreateShaderProgramv) \
+
+#define LIST_GL_FUNCS(X) \
+	X(PFNGLATTACHSHADERPROC, glAttachShader) \
+	X(PFNGLCOMPILESHADERPROC, glCompileShader) \
+	X(PFNGLCREATEPROGRAMPROC, glCreateProgram) \
+	X(PFNGLCREATESHADERPROC, glCreateShader) \
+	X(PFNGLDRAWBUFFERSPROC, glDrawBuffers) \
+	X(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation) \
+	X(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) \
+	X(PFNGLGETINFOLOGARBPROC, glGetInfoLogARB) \
+	X(PFNGLGETOBJECTPARAMETERIVARBPROC, glGetObjectParameterivARB) \
+	X(PFNGLGETPROGRAMIVPROC, glGetProgramiv) \
+	X(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog) \
+	X(PFNGLGETSHADERIVPROC, glGetShaderiv) \
+	X(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) \
+	X(PFNGLLINKPROGRAMPROC, glLinkProgram) \
+	X(PFNGLSHADERSOURCEPROC, glShaderSource) \
+	X(PFNGLUNIFORM1FPROC, glUniform1f) \
+	X(PFNGLUNIFORM1FVPROC, glUniform1fv) \
+	X(PFNGLUNIFORM1IPROC, glUniform1i) \
+	X(PFNGLUNIFORM1IVPROC, glUniform1iv) \
+	X(PFNGLUNIFORM2FPROC, glUniform2f) \
+	X(PFNGLUNIFORM2FVPROC, glUniform2fv) \
+	X(PFNGLUNIFORM2IVPROC, glUniform2iv) \
+	X(PFNGLUNIFORM3FPROC, glUniform3f) \
+	X(PFNGLUNIFORM3FVPROC, glUniform3fv) \
+	X(PFNGLUNIFORM3IVPROC, glUniform3iv) \
+	X(PFNGLUNIFORM4FPROC, glUniform4f) \
+	X(PFNGLUNIFORM4FVPROC, glUniform4fv) \
+	X(PFNGLUNIFORM4IVPROC, glUniform4iv) \
+	X(PFNGLUSEPROGRAMPROC, glUseProgram) \
+	X(PFNGLACTIVETEXTUREPROC, glActiveTexture) \
+
+#define X(t, n) static t n = NULL;
+LIST_GL_FUNCS(X)
+#undef X
+
 #define FONT_NAME "Courier New"
 #define FONT_SIZE 18
+
+#define LIST_TEXTURES(X) \
+	X(FontAtlas) \
+	X(GridChar) \
+	X(GridColor) \
+	X(GridBg) \
+
+enum {
+#define X(t) Tex##t,
+LIST_TEXTURES(X)
+#undef X
+
+	Tex_COUNT
+};
 
 static struct GLOBALS__ {
 	HDC hdc;
 	int charWidth, charHeight;
 	int atlasWidth, atlasHeight;
 	void* atlasBits;
-	GLint atlasTexture;
+
+	GLint textures[Tex_COUNT];
 
 	GLint uniform_resolution;
 } g;
@@ -89,42 +183,12 @@ static /*__forceinline*/ void initTexture(GLuint tex, int w, int h, int comp, in
 	*/
 }
 
-	//X(PFNGLCREATESHADERPROGRAMV, glCreateShaderProgramv) \
+static void uploadTexture(unsigned int texture_index, int w, int h, void* data) {
+	glActiveTexture(GL_TEXTURE0 + texture_index);
+	glBindTexture(GL_TEXTURE_2D, g.textures[texture_index]);
+	initTexture(g.textures[texture_index], w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
-#define LIST_GL_FUNCS(X) \
-	X(PFNGLATTACHSHADERPROC, glAttachShader) \
-	X(PFNGLCOMPILESHADERPROC, glCompileShader) \
-	X(PFNGLCREATEPROGRAMPROC, glCreateProgram) \
-	X(PFNGLCREATESHADERPROC, glCreateShader) \
-	X(PFNGLDRAWBUFFERSPROC, glDrawBuffers) \
-	X(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation) \
-	X(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) \
-	X(PFNGLGETINFOLOGARBPROC, glGetInfoLogARB) \
-	X(PFNGLGETOBJECTPARAMETERIVARBPROC, glGetObjectParameterivARB) \
-	X(PFNGLGETPROGRAMIVPROC, glGetProgramiv) \
-	X(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog) \
-	X(PFNGLGETSHADERIVPROC, glGetShaderiv) \
-	X(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) \
-	X(PFNGLLINKPROGRAMPROC, glLinkProgram) \
-	X(PFNGLSHADERSOURCEPROC, glShaderSource) \
-	X(PFNGLUNIFORM1FPROC, glUniform1f) \
-	X(PFNGLUNIFORM1FVPROC, glUniform1fv) \
-	X(PFNGLUNIFORM1IPROC, glUniform1i) \
-	X(PFNGLUNIFORM1IVPROC, glUniform1iv) \
-	X(PFNGLUNIFORM2FPROC, glUniform2f) \
-	X(PFNGLUNIFORM2FVPROC, glUniform2fv) \
-	X(PFNGLUNIFORM2IVPROC, glUniform2iv) \
-	X(PFNGLUNIFORM3FPROC, glUniform3f) \
-	X(PFNGLUNIFORM3FVPROC, glUniform3fv) \
-	X(PFNGLUNIFORM3IVPROC, glUniform3iv) \
-	X(PFNGLUNIFORM4FPROC, glUniform4f) \
-	X(PFNGLUNIFORM4FVPROC, glUniform4fv) \
-	X(PFNGLUNIFORM4IVPROC, glUniform4iv) \
-	X(PFNGLUSEPROGRAMPROC, glUseProgram) \
-
-#define X(t, n) static t n = NULL;
-LIST_GL_FUNCS(X)
-#undef X
+}
 
 static void loadGLFuncs(void) {
 #define X(t, n) n = (t)wglGetProcAddress(#n);
@@ -153,13 +217,16 @@ static GLint compileShader(GLuint type, const char* src) {
 }
 
 static const char* kFrag =
-"uniform sampler2D atlas;"
+#define X(t) "uniform sampler2D " #t ";\n"
+LIST_TEXTURES(X)
+#undef X
 "uniform vec2 charSize;"
 "uniform vec2 resolution;"
 "void main() {\n"
-//"	vec2 char_coord = floor(gl_FragCoord.xy / charSize);\n"
+"	vec2 char_coord = floor(gl_FragCoord.xy / charSize);\n"
 //"	vec2 char_uv = fract(gl_FragCoord.xy / charSize);\n"
-"	gl_FragColor = texture(atlas, gl_FragCoord.xy / textureSize(atlas, 0));\n"
+"	vec4 color = texture(GridColor, char_coord / textureSize(GridColor, 0));\n"
+"	gl_FragColor = color * texture(FontAtlas, gl_FragCoord.xy / textureSize(FontAtlas, 0));\n"
 "}";
 
 //GLint makeProgram(const char* vert, const char* frag) {
@@ -174,14 +241,20 @@ GLint makeProgram(const char* frag) {
 	// TODO const GLuint pid = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, sources);
 }
 
+static void uploadGrid(void) {
+	uploadTexture(TexGridChar, grid.w, grid.h, grid.chars);
+	uploadTexture(TexGridColor, grid.w, grid.h, grid.color);
+	uploadTexture(TexGridBg, grid.w, grid.h, grid.bg);
+}
+
 static void resize(int w, int h) {
 	glUniform2f(g.uniform_resolution, (float)w, (float)h);
 	glViewport(0, 0, w, h);
+	gridResize(w / g.charWidth, h / g.charHeight);
 }
 
 static void paint(void) {
-	//glClearColor(1, 0, 0, 1);
-	//glClear(GL_COLOR_BUFFER_BIT);
+	uploadGrid();
 	glRects(-1, -1, 1, 1);
 	SwapBuffers(g.hdc);
 }
@@ -240,25 +313,53 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	wglMakeCurrent(g.hdc, hglrc);
 	loadGLFuncs();
 
-	glGenTextures(1, &g.atlasTexture);
-	initTexture(g.atlasTexture, g.atlasWidth, g.atlasHeight, GL_RGBA, GL_UNSIGNED_BYTE, g.atlasBits);
-	glBindTexture(GL_TEXTURE_2D, g.atlasTexture);
+	glGenTextures(Tex_COUNT, g.textures);
+	uploadTexture(TexFontAtlas, g.atlasWidth, g.atlasHeight, g.atlasBits);
+	GL_CHECK();
 
 	const GLint prog = makeProgram(kFrag);
 	g.uniform_resolution = glGetUniformLocation(prog, "resolution");
 
 	glUseProgram(prog);
 
-	const GLint uniform_atlas = glGetUniformLocation(prog, "atlas");
-	glUniform1i(uniform_atlas, 0);
+#ifdef _DEBUG
+#define X(t) { \
+		const GLint loc = glGetUniformLocation(prog, #t); \
+		if (loc < 0) { \
+			MessageBoxA(NULL, #t, "uniform not found", 0); \
+		} else { \
+			glUniform1i(loc, Tex##t); \
+		} \
+	}
+#else
+#define X(t) { \
+	glUniform1i(glGetUniformLocation(prog, #t), Tex##t);
+#endif
+	LIST_TEXTURES(X)
+#undef X
+	GL_CHECK();
 
 	const GLint uniform_charSize = glGetUniformLocation(prog, "charSize");
 	glUniform2f(uniform_charSize, (float)g.charWidth, (float)g.charHeight);
 
 	resize(w, h);
 
-	ShowWindow(hwnd, nCmdShow);
+	for (int y = 0; y < grid.h; y++) {
+		for (int x = 0; x < grid.w; x++) {
+			gridPut(x, y,
+				(Char) {
+				.col = x & 0x0f, .row = y & 0x0f, .plane = 0
+			},
+				(RGB) {
+				.r = x * 255 / grid.w, .g = y * 255 / grid.h, .b = 0
+			},
+				(RGB) {
+				.r = 0, .g = 0, .b = 127
+			});
+		}
+	}
 
+	ShowWindow(hwnd, nCmdShow);
 	for (;;) {
 		MSG msg;
 		if (GetMessage(&msg, hwnd, 0, 0) <= 0)
