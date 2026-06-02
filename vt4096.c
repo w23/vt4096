@@ -217,16 +217,26 @@ static GLint compileShader(GLuint type, const char* src) {
 }
 
 static const char* kFrag =
+"#version 130\n"
 #define X(t) "uniform sampler2D " #t ";\n"
 LIST_TEXTURES(X)
 #undef X
-"uniform vec2 charSize;"
-"uniform vec2 resolution;"
+"uniform vec2 charSize;\n"
+"uniform vec2 resolution;\n"
+"vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
 "	vec2 char_coord = floor(gl_FragCoord.xy / charSize);\n"
-//"	vec2 char_uv = fract(gl_FragCoord.xy / charSize);\n"
-"	vec4 color = texture(GridColor, char_coord / textureSize(GridColor, 0));\n"
-"	gl_FragColor = color * texture(FontAtlas, gl_FragCoord.xy / textureSize(FontAtlas, 0));\n"
+"	vec4 char_loc = tex(GridChar, char_coord + .5);\n"
+"	vec4 color = tex(GridColor, char_coord + .5);\n"
+"	vec4 bg = tex(GridBg, char_coord + .5);\n"
+"	vec2 atlasCharSize = charSize;\n"
+"	vec2 glyph_offset = char_loc.rg * 255. * atlasCharSize;\n"
+//"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize;\n"
+"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize + glyph_offset;\n"
+"	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
+// "	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
+"	gl_FragColor = mix(bg, color, glyph.r);\n"
+//"	gl_FragColor += vec4(1., 0., 0., 1.) * tex(FontAtlas, gl_FragCoord.xy);\n"
 "}";
 
 //GLint makeProgram(const char* vert, const char* frag) {
@@ -239,6 +249,17 @@ GLint makeProgram(const char* frag) {
 	return pid;
 
 	// TODO const GLuint pid = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, sources);
+}
+
+static void testString(int x, int y, const char* str, int len, RGB color, RGB bg) {
+	for (int i = 0; i < len && str[i] != '\0' && (x + i) < grid.w; ++i) {
+		const Char c = {
+			.row = (str[i]) & 0x0f,
+			.col = 15 - (((unsigned char)(str[i])) >> 4),
+			.plane = 0,
+		};
+		gridPut(x + i, y, c, color, bg);
+	}
 }
 
 static void uploadGrid(void) {
@@ -344,11 +365,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	resize(w, h);
 
+	/*
 	for (int y = 0; y < grid.h; y++) {
 		for (int x = 0; x < grid.w; x++) {
 			gridPut(x, y,
 				(Char) {
-				.col = x & 0x0f, .row = y & 0x0f, .plane = 0
+				.row = x & 0x0f, .col = y & 0x0f, .plane = 0
 			},
 				(RGB) {
 				.r = x * 255 / grid.w, .g = y * 255 / grid.h, .b = 0
@@ -356,6 +378,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 				(RGB) {
 				.r = 0, .g = 0, .b = 127
 			});
+		}
+	}
+	*/
+
+	//testString(10, 20, "AAAAAAAAAAAAAAAAAAAAAAAAAAAA", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});
+	//testString(3, 10, "testString(3, 10, \"\", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});
+
+	{
+		FILE* f = fopen("vt4096.c", "r");
+		char buf[65536];
+		const size_t read = fread(buf, 1, sizeof(buf), f);
+		fclose(f);
+
+		const char* s = buf;
+		for (int y = grid.h - 1; y >= 0; --y) {
+			const char *endl = strchr(s, '\n');
+			if (endl == NULL)
+				break;
+			testString(0, y, s, endl - s, (RGB) { 255, 255, 255 }, (RGB){0,0,0});
+			s = endl + 1;
 		}
 	}
 
