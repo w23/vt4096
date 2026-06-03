@@ -1,4 +1,4 @@
-#include "grid.h"
+#include "terminal.h"
 #include <memory.h>
 #include <assert.h>
 

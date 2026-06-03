@@ -18,12 +18,12 @@
     <ClCompile Include="vt4096.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="grid.c">
+    <ClCompile Include="terminal.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="grid.h">
+    <ClInclude Include="terminal.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

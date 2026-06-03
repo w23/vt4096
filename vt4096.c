@@ -1,4 +1,4 @@
-#include "grid.h"
+#include "terminal.h"
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN

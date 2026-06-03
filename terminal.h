@@ -30,3 +30,5 @@ extern Grid grid;
 void gridResize(unsigned int w, unsigned int h);
 //void gridClear(void);
 void gridPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
+
+
