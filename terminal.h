@@ -18,7 +18,7 @@ typedef struct {
 } Char;
 
 typedef struct {
-	int w, h;
+	int cols, rows;
 
 	Char chars[MAX_GRID_SIZE];
 	RGBA color[MAX_GRID_SIZE];
@@ -27,8 +27,8 @@ typedef struct {
 
 extern Grid grid;
 
-void gridResize(unsigned int w, unsigned int h);
-//void gridClear(void);
-void gridPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
+void terminalResize(unsigned int w, unsigned int h);
+void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
 
-
+// Parses esc seqences and other things there
+void terminalWrite(const char* string, int len);

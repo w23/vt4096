@@ -225,10 +225,13 @@ LIST_TEXTURES(X)
 "uniform vec2 resolution;\n"
 "vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
-"	vec2 char_coord = floor(gl_FragCoord.xy / charSize);\n"
-"	vec4 char_loc = tex(GridChar, char_coord + .5);\n"
-"	vec4 color = tex(GridColor, char_coord + .5);\n"
-"	vec4 bg = tex(GridBg, char_coord + .5);\n"
+"	vec2 char_coord = floor((gl_FragCoord.xy - .5) / charSize);\n"
+"	vec2 cc = char_coord + .5;\n"
+"	cc.y = textureSize(GridChar, 0).y - cc.y;\n"
+"	vec4 char_loc = tex(GridChar, cc);\n"
+"	vec4 color = tex(GridColor, cc);\n"
+"	vec4 bg = tex(GridBg, cc);\n"
+//"	bg = vec4(cc.y / textureSize(GridChar, 0).y);\n"
 "	vec2 atlasCharSize = charSize;\n"
 "	vec2 glyph_offset = char_loc.rg * 255. * atlasCharSize;\n"
 //"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize;\n"
@@ -236,6 +239,7 @@ LIST_TEXTURES(X)
 "	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
 // "	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
 "	gl_FragColor = mix(bg, color, glyph.r);\n"
+//"	gl_FragColor = vec4(cc.y / textureSize(GridChar, 0).y);\n"
 //"	gl_FragColor += vec4(1., 0., 0., 1.) * tex(FontAtlas, gl_FragCoord.xy);\n"
 "}";
 
@@ -252,26 +256,26 @@ GLint makeProgram(const char* frag) {
 }
 
 static void testString(int x, int y, const char* str, int len, RGB color, RGB bg) {
-	for (int i = 0; i < len && str[i] != '\0' && (x + i) < grid.w; ++i) {
+	for (int i = 0; i < len && str[i] != '\0' && (x + i) < grid.cols; ++i) {
 		const Char c = {
 			.row = (str[i]) & 0x0f,
 			.col = 15 - (((unsigned char)(str[i])) >> 4),
 			.plane = 0,
 		};
-		gridPut(x + i, y, c, color, bg);
+		terminalPut(x + i, y, c, color, bg);
 	}
 }
 
 static void uploadGrid(void) {
-	uploadTexture(TexGridChar, grid.w, grid.h, grid.chars);
-	uploadTexture(TexGridColor, grid.w, grid.h, grid.color);
-	uploadTexture(TexGridBg, grid.w, grid.h, grid.bg);
+	uploadTexture(TexGridChar, grid.cols, grid.rows, grid.chars);
+	uploadTexture(TexGridColor, grid.cols, grid.rows, grid.color);
+	uploadTexture(TexGridBg, grid.cols, grid.rows, grid.bg);
 }
 
 static void resize(int w, int h) {
 	glUniform2f(g.uniform_resolution, (float)w, (float)h);
 	glViewport(0, 0, w, h);
-	gridResize(w / g.charWidth, h / g.charHeight);
+	terminalResize(w / g.charWidth, h / g.charHeight);
 }
 
 static void paint(void) {
@@ -283,13 +287,19 @@ static void paint(void) {
 static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
 	case WM_PAINT: paint(); break;
-	case WM_DESTROY: PostQuitMessage(0); break;
-	case WM_CLOSE: ExitProcess(0); break;
+	case WM_CHAR: {
+		// TODO convert to UTF-8
+		const char c = wparam;
+		terminalWrite(&c, 1);
+		return 0; // 0 = processed this message
+	}
 	case WM_SIZE: {
 		const unsigned int width = (unsigned int)(lparam & 0xffff), height = (unsigned int)(lparam >> 16);
 		resize(width, height);
 		break;
 	}
+	case WM_DESTROY: PostQuitMessage(0); break;
+	case WM_CLOSE: ExitProcess(0); break;
 	default: return DefWindowProc(hwnd, msg, wparam, lparam);
 	}
 
@@ -310,7 +320,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 		//.hIcon = LoadIcon(NULL, IDI_APPLICATION), // TODO NULL
 		//.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 	};
-	RegisterClassEx(&wndclass);
+	// -W version makes WM_CHAR report UTF-16 chars
+	// -A version would make it UTF-8 (unless user has specified a different code page)
+	// TODO figure out if UTF-8 would suffice without manifest
+	RegisterClassExW(&wndclass);
 
 	makeFontAtlas();
 	const int w = 80 * g.charWidth;
@@ -365,40 +378,39 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	resize(w, h);
 
-	/*
-	for (int y = 0; y < grid.h; y++) {
-		for (int x = 0; x < grid.w; x++) {
-			gridPut(x, y,
-				(Char) {
-				.row = x & 0x0f, .col = y & 0x0f, .plane = 0
-			},
-				(RGB) {
-				.r = x * 255 / grid.w, .g = y * 255 / grid.h, .b = 0
-			},
-				(RGB) {
-				.r = 0, .g = 0, .b = 127
-			});
-		}
-	}
-	*/
-
-	//testString(10, 20, "AAAAAAAAAAAAAAAAAAAAAAAAAAAA", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});
-	//testString(3, 10, "testString(3, 10, \"\", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});", (RGB) { .r = 255, .g = 255, .b = 0 }, (RGB) {.r = 128, .g=64, .b=32});
+	//terminalWrite("1\r\n2\r\n3\n4\n5\n6\n", -1);
 
 	{
 		FILE* f = fopen("vt4096.c", "r");
 		char buf[65536];
-		const size_t read = fread(buf, 1, sizeof(buf), f);
+		const size_t read = fread(buf, 1, sizeof(buf)-1, f);
+		buf[read] = '\0';
 		fclose(f);
 
-		const char* s = buf;
-		for (int y = grid.h - 1; y >= 0; --y) {
-			const char *endl = strchr(s, '\n');
-			if (endl == NULL)
-				break;
-			testString(0, y, s, endl - s, (RGB) { 255, 255, 255 }, (RGB){0,0,0});
+		//terminalWrite(buf, read);
+
+#if 0
+		char* s = buf;
+		for (;;) {
+			char *endl = strchr(s, '\n');
+			if (endl == NULL) {
+				endl = s + strlen(s) - 1;
+				if (endl == s)
+					break;
+			}
+
+			const int len = endl - s;
+			terminalWrite(s, len);
+			terminalWrite("\r\n", 2);
+#if 0
+			char c = s[len + 1];
+			s[len + 1] = '\0';
+			OutputDebugStringA(s);
+			s[len + 1] = c;
+#endif
 			s = endl + 1;
 		}
+#endif
 	}
 
 	ShowWindow(hwnd, nCmdShow);
