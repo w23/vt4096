@@ -23,6 +23,15 @@ void terminalResize(unsigned int w, unsigned int h) {
 	assert(h < MAX_GRID_HEIGHT);
 	grid.cols = w;
 	grid.rows = h;
+
+	// FIXME Handle top_row
+	// - smaller?
+	// - bigger?
+}
+
+void terminalClear(void) {
+	grid.top_row = grid.rows - 1;
+	// TODO clear contents
 }
 
 void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg) {
@@ -36,18 +45,14 @@ void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg) {
 }
 
 static void addNewRow(void) {
-	// Last row
-	//term.cursor.row = grid.rows - 1;
-	term.cursor.row = 0;
-
-	/*
-	// TODO Consider circus buffer
-	memmove(grid.chars,
-		grid.chars + grid.cols,
-		sizeof(grid.chars[0]) * (grid.cols * (grid.rows - 1)));
-	memset(&grid.chars[grid.cols * (grid.rows - 1)], 0, sizeof(grid.chars[0]) * grid.cols);
-	// FIXME colors
-	*/
+	term.cursor.row = grid.top_row;
+	const int offset = grid.cols * term.cursor.row;
+	for (int col = 0; col < grid.cols; ++col) {
+		grid.chars[offset + col] = (Char){ 0 };
+		grid.color[offset + col] = (RGBA){ 0 };
+		grid.bg[offset + col] = term.bg;
+	}
+	grid.top_row = (grid.top_row + 1) % grid.rows;
 }
 
 static Char charForChar(unsigned int unicode_char) {
@@ -55,17 +60,17 @@ static Char charForChar(unsigned int unicode_char) {
 	return (Char) {
 		// hardcoded values for ANSI const atlas
 		.row = unicode_char & 0x0f,
-		.col = 15 - (unicode_char >> 4),
+		.col = unicode_char >> 4,
 		.plane = 0,
 	};
 }
 
 static void newline(void) {
 	term.cursor.row++;
-	if (term.cursor.row >= grid.rows) {
+	if (term.cursor.row >= grid.top_row) {
 		addNewRow();
 	}
-	memset(grid.color + term.cursor.row * grid.cols, 0, sizeof(grid.color[0]) * grid.cols);
+	memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
 }
 
 void terminalWrite(const char* string, int len) {

@@ -113,6 +113,7 @@ static struct GLOBALS__ {
 	GLint textures[Tex_COUNT];
 
 	GLint uniform_resolution;
+	GLint uniform_topRow;
 } g;
 
 static __forceinline void makeFontAtlas() {
@@ -167,7 +168,7 @@ static __forceinline void makeFontAtlas() {
 			//if (!isprint(c))
 			//	c = '?';
 
-			TextOutA(text_dc, x * g.charWidth, y * g.charHeight, &c, 1);
+			TextOutA(text_dc, x * g.charWidth, (15 - y) * g.charHeight, &c, 1);
 		}
 	}
 }
@@ -223,11 +224,12 @@ LIST_TEXTURES(X)
 #undef X
 "uniform vec2 charSize;\n"
 "uniform vec2 resolution;\n"
+"uniform float topRow;\n"
 "vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
 "	vec2 char_coord = floor((gl_FragCoord.xy - .5) / charSize);\n"
 "	vec2 cc = char_coord + .5;\n"
-"	cc.y = textureSize(GridChar, 0).y - cc.y;\n"
+"	cc.y = textureSize(GridChar, 0).y - cc.y + topRow;\n"
 "	vec4 char_loc = tex(GridChar, cc);\n"
 "	vec4 color = tex(GridColor, cc);\n"
 "	vec4 bg = tex(GridBg, cc);\n"
@@ -280,6 +282,7 @@ static void resize(int w, int h) {
 
 static void paint(void) {
 	uploadGrid();
+	glUniform1f(g.uniform_topRow, (float)grid.top_row);
 	glRects(-1, -1, 1, 1);
 	SwapBuffers(g.hdc);
 }
@@ -290,7 +293,10 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	case WM_CHAR: {
 		// TODO convert to UTF-8
 		const char c = wparam;
-		terminalWrite(&c, 1);
+		if (c == '\r')
+			terminalWrite("\r\n", 2);
+		else
+			terminalWrite(&c, 1);
 		return 0; // 0 = processed this message
 	}
 	case WM_SIZE: {
@@ -353,6 +359,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	const GLint prog = makeProgram(kFrag);
 	g.uniform_resolution = glGetUniformLocation(prog, "resolution");
+	g.uniform_topRow = glGetUniformLocation(prog, "topRow");
 
 	glUseProgram(prog);
 
@@ -377,6 +384,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	glUniform2f(uniform_charSize, (float)g.charWidth, (float)g.charHeight);
 
 	resize(w, h);
+	terminalClear();
 
 	//terminalWrite("1\r\n2\r\n3\n4\n5\n6\n", -1);
 
@@ -389,7 +397,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 		//terminalWrite(buf, read);
 
-#if 0
+#if 1
 		char* s = buf;
 		for (;;) {
 			char *endl = strchr(s, '\n');
