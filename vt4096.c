@@ -1,4 +1,6 @@
 #include "terminal.h"
+#include "shell.h"
+#include "common.h"
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -110,15 +112,13 @@ static struct GLOBALS__ {
 	int atlasWidth, atlasHeight;
 	void* atlasBits;
 
-	GLint textures[Tex_COUNT];
+	GLuint textures[Tex_COUNT];
 
 	GLint uniform_resolution;
 	GLint uniform_topRow;
 } g;
 
-static __forceinline void makeFontAtlas() {
-	void *bitmap_ptr = NULL;
-
+static __forceinline void makeFontAtlas(void) {
 	const HFONT font = CreateFont(
 		FONT_SIZE, // cHeight
 		0, // cWidth
@@ -164,11 +164,11 @@ static __forceinline void makeFontAtlas() {
 
 	for (int y = 0; y < 16; ++y) {
 		for (int x = 0; x < 16; ++x) {
-			unsigned char c = (y << 4) | x;
+			u8 c = (u8)((y << 4) | x);
 			//if (!isprint(c))
 			//	c = '?';
 
-			TextOutA(text_dc, x * g.charWidth, (15 - y) * g.charHeight, &c, 1);
+			TextOutA(text_dc, x * g.charWidth, (15 - y) * g.charHeight, (const char*)&c, 1);
 		}
 	}
 }
@@ -192,7 +192,7 @@ static void uploadTexture(unsigned int texture_index, int w, int h, void* data) 
 }
 
 static void loadGLFuncs(void) {
-#define X(t, n) n = (t)wglGetProcAddress(#n);
+#define X(t, n) n = (t)(void*)wglGetProcAddress(#n);
 	LIST_GL_FUNCS(X)
 #undef X
 }
@@ -292,7 +292,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	case WM_PAINT: paint(); break;
 	case WM_CHAR: {
 		// TODO convert to UTF-8
-		const char c = wparam;
+		const char c = (char)wparam;
 		if (c == '\r')
 			terminalWrite("\r\n", 2);
 		else
@@ -317,6 +317,7 @@ static const PIXELFORMATDESCRIPTOR kPfd = { sizeof(kPfd), 0,
 	0, 0, 0, 0, 0, 0, 0, 0 };
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow) {
+	(void)hPrevInstance; (void)lpCmdLine;
 	const WNDCLASSEX wndclass = {
 		.cbSize = sizeof(wndclass),
 		.lpszClassName = TEXT("VT4096"),
@@ -388,6 +389,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	//terminalWrite("1\r\n2\r\n3\n4\n5\n6\n", -1);
 
+	shellCreate(grid.cols, grid.rows, "cmd.exe");
+	char buf[4096];
+	const int read = shellRead(buf, sizeof(buf));
+	terminalWrite(buf, read);
+
+#if 0
 	{
 		FILE* f = fopen("vt4096.c", "r");
 		char buf[65536];
@@ -420,6 +427,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 		}
 #endif
 	}
+#endif
 
 	ShowWindow(hwnd, nCmdShow);
 	for (;;) {

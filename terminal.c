@@ -1,6 +1,9 @@
 #include "terminal.h"
+#include "common.h"
+
 #include <memory.h>
 #include <assert.h>
+#include <string.h> // strlen
 
 Grid grid = { 0 };
 
@@ -59,8 +62,8 @@ static Char charForChar(unsigned int unicode_char) {
 	// TODO unicode and dynamic glyph atlas support
 	return (Char) {
 		// hardcoded values for ANSI const atlas
-		.row = unicode_char & 0x0f,
-		.col = unicode_char >> 4,
+		.row = (u8)(unicode_char & 0x0f),
+		.col = (u8)(unicode_char >> 4),
 		.plane = 0,
 	};
 }
@@ -75,7 +78,7 @@ static void newline(void) {
 
 void terminalWrite(const char* string, int len) {
 	if (len < 0)
-		len = strlen(string);
+		len = (int)strlen(string);
 
 	for (int i = 0; i < len; ++i) {
 		const unsigned int c = string[i];
