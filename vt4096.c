@@ -2,13 +2,6 @@
 #include "shell.h"
 #include "common.h"
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#define WIN32_EXTRA_LEAN
-#define VC_LEANMEAN
-#define VC_EXTRALEAN
-#include <Windows.h>
-
 #include <gl/GL.h>
 #include "glext.h"
 
@@ -117,6 +110,8 @@ static struct GLOBALS__ {
 	GLint uniform_resolution;
 	GLint uniform_topRow;
 } g;
+
+HWND mainWindow;
 
 static __forceinline void makeFontAtlas(void) {
 	const HFONT font = CreateFont(
@@ -257,6 +252,7 @@ GLint makeProgram(const char* frag) {
 	// TODO const GLuint pid = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, sources);
 }
 
+/*
 static void testString(int x, int y, const char* str, int len, RGB color, RGB bg) {
 	for (int i = 0; i < len && str[i] != '\0' && (x + i) < grid.cols; ++i) {
 		const Char c = {
@@ -267,6 +263,7 @@ static void testString(int x, int y, const char* str, int len, RGB color, RGB bg
 		terminalPut(x + i, y, c, color, bg);
 	}
 }
+*/
 
 static void uploadGrid(void) {
 	uploadTexture(TexGridChar, grid.cols, grid.rows, grid.chars);
@@ -282,6 +279,7 @@ static void resize(int w, int h) {
 
 static void paint(void) {
 	uploadGrid();
+	grid.dirty = 0;
 	glUniform1f(g.uniform_topRow, (float)grid.top_row);
 	glRects(-1, -1, 1, 1);
 	SwapBuffers(g.hdc);
@@ -289,14 +287,26 @@ static void paint(void) {
 
 static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
-	case WM_PAINT: paint(); break;
+#if 0
+	case WM_PAINT: {
+		OutputDebugStringA("PAIN\n");
+		PAINTSTRUCT ps = { 0 };
+		BeginPaint(hwnd, &ps);
+		paint();
+		EndPaint(hwnd, &ps);
+		return 0;
+	}
+#endif
 	case WM_CHAR: {
 		// TODO convert to UTF-8
 		const char c = (char)wparam;
-		if (c == '\r')
-			terminalWrite("\r\n", 2);
-		else
-			terminalWrite(&c, 1);
+		if (c == '\r') {
+			//terminalWrite("\r\n", 2);
+			shellWrite("\r\n", 2);
+		} else {
+			shellWrite(&c, 1);
+			//terminalWrite(&c, 1);
+		}
 		return 0; // 0 = processed this message
 	}
 	case WM_SIZE: {
@@ -340,14 +350,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	const unsigned int windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
 	AdjustWindowRectEx(&r, windowStyle, FALSE, 0);
 
-	HWND hwnd = CreateWindowEx(
+	mainWindow = CreateWindowEx(
 		0, // window styles
 		wndclass.lpszClassName,
 		TEXT("VT4096"), // title
 		windowStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
 		NULL, NULL, hInstance, NULL);
-	g.hdc = GetDC(hwnd);
+	g.hdc = GetDC(mainWindow);
 
 	SetPixelFormat(g.hdc, ChoosePixelFormat(g.hdc, &kPfd), &kPfd);
 	HGLRC hglrc = wglCreateContext(g.hdc);
@@ -384,15 +394,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	const GLint uniform_charSize = glGetUniformLocation(prog, "charSize");
 	glUniform2f(uniform_charSize, (float)g.charWidth, (float)g.charHeight);
 
+	terminalInit();
 	resize(w, h);
 	terminalClear();
 
 	//terminalWrite("1\r\n2\r\n3\n4\n5\n6\n", -1);
 
 	shellCreate(grid.cols, grid.rows, "cmd.exe");
-	char buf[4096];
-	const int read = shellRead(buf, sizeof(buf));
-	terminalWrite(buf, read);
 
 #if 0
 	{
@@ -429,14 +437,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	}
 #endif
 
-	ShowWindow(hwnd, nCmdShow);
+	ShowWindow(mainWindow, nCmdShow);
 	for (;;) {
 		MSG msg;
-		if (GetMessage(&msg, hwnd, 0, 0) <= 0)
+		if (GetMessage(&msg, mainWindow, 0, 0) <= 0)
 			break;
-
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
+
+		// FIXME this adds one frame of latency per each message.
+		// TODO do this only once per batch of messages
+		if (grid.dirty) {
+			paint();
+		}
 	}
 
 	return 0;

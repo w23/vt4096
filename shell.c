@@ -1,18 +1,10 @@
 #include "shell.h"
-
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#define WIN32_EXTRA_LEAN
-#define VC_LEANMEAN
-#define VC_EXTRALEAN
-#include <Windows.h>
+#include "terminal.h"
+#include "common.h"
 
 #include <assert.h>
 
-static struct {
-	HPCON hPC;
-	HANDLE userInput, shellOutput;
-} shell;
+Shell shell = { 0 };
 
 typedef struct {
 	HANDLE read, write;
@@ -88,6 +80,22 @@ void PrepareStartupInformation(HPCON hpc, STARTUPINFOEXA* psi) {
 		NULL);
 }
 
+static DWORD WINAPI shellReadThread(LPVOID arg) {
+	(void)arg;
+
+	for (;;) {
+		char buf[4096];
+		DWORD bytes_read = 0;
+		const BOOL result = ReadFile(shell.shellOutput, buf, sizeof(buf), &bytes_read, NULL);
+		assert(result);
+		if (bytes_read == 0)
+			continue;
+
+		terminalWrite(buf, bytes_read);
+		PostMessage(mainWindow, WM_USER, 0, 0);
+	}
+}
+
 void shellCreate(int cols, int rows, char *shell_exe) {
 	createConsole((COORD){(SHORT)cols, (SHORT)rows});
 	STARTUPINFOEXA sie = { .StartupInfo.cb = sizeof(sie), };
@@ -105,6 +113,9 @@ void shellCreate(int cols, int rows, char *shell_exe) {
 		NULL,
 		&sie.StartupInfo,
 		&pi);
+
+	CreateThread(NULL, 0, shellReadThread, NULL, 0, NULL);
+
 }
 
 void shellResize(int cols, int rows) {
@@ -112,13 +123,10 @@ void shellResize(int cols, int rows) {
 }
 
 void shellWrite(const char* str, int len) {
-	(void)str; (void)len;
-	// TODO
-}
-
-int shellRead(char* buf, int buf_len) {
-	DWORD bytes_read = 0;
-	const BOOL result = ReadFile(shell.shellOutput, buf, buf_len, &bytes_read, NULL);
+	assert(len);
+	// TODO async?
+	DWORD written = 0;
+	const BOOL result = WriteFile(shell.userInput, str, len, &written, NULL);
 	assert(result);
-	return result ? bytes_read : 0;
+	assert(written == (DWORD)len);
 }

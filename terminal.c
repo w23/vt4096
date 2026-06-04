@@ -16,10 +16,16 @@ static struct {
 	// row must always point to a valid row
 	struct { int col, row; } cursor;
 	RGBA color, bg;
+
+	CRITICAL_SECTION mutex;
 } term = {
 	.color = {255, 255, 255, 255},
 	.bg = {0,0,0,0},
 };
+
+void terminalInit(void) {
+	InitializeCriticalSection(&term.mutex);
+}
 
 void terminalResize(unsigned int w, unsigned int h) {
 	assert(w < MAX_GRID_WIDTH);
@@ -34,9 +40,11 @@ void terminalResize(unsigned int w, unsigned int h) {
 
 void terminalClear(void) {
 	grid.top_row = grid.rows - 1;
+	grid.dirty = 1;
 	// TODO clear contents
 }
 
+/*
 void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg) {
 	assert(x < MAX_GRID_WIDTH);
 	assert(y < MAX_GRID_HEIGHT);
@@ -46,6 +54,7 @@ void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg) {
 	grid.color[offset] = (RGBA){ .r = color.r, .g = color.g, .b = color.b };
 	grid.bg[offset] = (RGBA){ .r = bg.r, .g = bg.g, .b = bg.b };
 }
+*/
 
 static void addNewRow(void) {
 	term.cursor.row = grid.top_row;
@@ -77,6 +86,7 @@ static void newline(void) {
 }
 
 void terminalWrite(const char* string, int len) {
+	EnterCriticalSection(&term.mutex);
 	if (len < 0)
 		len = (int)strlen(string);
 
@@ -112,4 +122,6 @@ void terminalWrite(const char* string, int len) {
 		term.cursor.col++;
 	}
 
+	grid.dirty = 1;
+	LeaveCriticalSection(&term.mutex);
 }

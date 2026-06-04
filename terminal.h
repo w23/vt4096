@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
 	int cols, rows;
 	int top_row;
+	int dirty;
 
 	Char chars[MAX_GRID_SIZE];
 	RGBA color[MAX_GRID_SIZE];
@@ -28,9 +29,10 @@ typedef struct {
 
 extern Grid grid;
 
+void terminalInit(void);
 void terminalResize(unsigned int w, unsigned int h);
 void terminalClear(void);
-void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
+//void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
 
 // Parses esc seqences and other things there
 void terminalWrite(const char* string, int len);
