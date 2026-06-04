@@ -32,7 +32,6 @@ extern Grid grid;
 void terminalInit(void);
 void terminalResize(unsigned int w, unsigned int h);
 void terminalClear(void);
-//void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg);
 
 // Parses esc seqences and other things there
 void terminalWrite(const char* string, int len);

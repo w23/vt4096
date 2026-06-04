@@ -92,6 +92,8 @@ static DWORD WINAPI shellReadThread(LPVOID arg) {
 			continue;
 
 		terminalWrite(buf, bytes_read);
+
+		// notify window to redraw
 		PostMessage(mainWindow, WM_USER, 0, 0);
 	}
 }

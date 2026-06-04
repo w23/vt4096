@@ -252,19 +252,6 @@ GLint makeProgram(const char* frag) {
 	// TODO const GLuint pid = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, sources);
 }
 
-/*
-static void testString(int x, int y, const char* str, int len, RGB color, RGB bg) {
-	for (int i = 0; i < len && str[i] != '\0' && (x + i) < grid.cols; ++i) {
-		const Char c = {
-			.row = (str[i]) & 0x0f,
-			.col = 15 - (((unsigned char)(str[i])) >> 4),
-			.plane = 0,
-		};
-		terminalPut(x + i, y, c, color, bg);
-	}
-}
-*/
-
 static void uploadGrid(void) {
 	uploadTexture(TexGridChar, grid.cols, grid.rows, grid.chars);
 	uploadTexture(TexGridColor, grid.cols, grid.rows, grid.color);
@@ -301,11 +288,9 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 		// TODO convert to UTF-8
 		const char c = (char)wparam;
 		if (c == '\r') {
-			//terminalWrite("\r\n", 2);
 			shellWrite("\r\n", 2);
 		} else {
 			shellWrite(&c, 1);
-			//terminalWrite(&c, 1);
 		}
 		return 0; // 0 = processed this message
 	}
@@ -333,9 +318,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 		.lpszClassName = TEXT("VT4096"),
 		.lpfnWndProc = wndProc,
 		.hInstance = hInstance, // TODO NULL
-		//.hCursor = LoadCursor(NULL, IDC_ARROW), // TODO NULL
-		//.hIcon = LoadIcon(NULL, IDI_APPLICATION), // TODO NULL
-		//.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
 	};
 	// -W version makes WM_CHAR report UTF-16 chars
 	// -A version would make it UTF-8 (unless user has specified a different code page)
@@ -398,44 +380,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	resize(w, h);
 	terminalClear();
 
-	//terminalWrite("1\r\n2\r\n3\n4\n5\n6\n", -1);
-
 	shellCreate(grid.cols, grid.rows, "cmd.exe");
-
-#if 0
-	{
-		FILE* f = fopen("vt4096.c", "r");
-		char buf[65536];
-		const size_t read = fread(buf, 1, sizeof(buf)-1, f);
-		buf[read] = '\0';
-		fclose(f);
-
-		//terminalWrite(buf, read);
-
-#if 1
-		char* s = buf;
-		for (;;) {
-			char *endl = strchr(s, '\n');
-			if (endl == NULL) {
-				endl = s + strlen(s) - 1;
-				if (endl == s)
-					break;
-			}
-
-			const int len = endl - s;
-			terminalWrite(s, len);
-			terminalWrite("\r\n", 2);
-#if 0
-			char c = s[len + 1];
-			s[len + 1] = '\0';
-			OutputDebugStringA(s);
-			s[len + 1] = c;
-#endif
-			s = endl + 1;
-		}
-#endif
-	}
-#endif
 
 	ShowWindow(mainWindow, nCmdShow);
 	for (;;) {

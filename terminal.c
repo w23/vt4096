@@ -7,10 +7,6 @@
 
 Grid grid = { 0 };
 
-//void gridClear() {
-//	memset(grid.cells, 0, sizeof(grid.cells));
-//}
-
 static struct {
 	// col can point to beyond grid.cols (would mean line wrap on the next write)
 	// row must always point to a valid row
@@ -44,17 +40,9 @@ void terminalClear(void) {
 	// TODO clear contents
 }
 
-/*
-void terminalPut(unsigned int x, unsigned int y, Char c, RGB color, RGB bg) {
-	assert(x < MAX_GRID_WIDTH);
-	assert(y < MAX_GRID_HEIGHT);
-	const int offset = x + y * grid.cols;
-
-	grid.chars[offset] = c;
-	grid.color[offset] = (RGBA){ .r = color.r, .g = color.g, .b = color.b };
-	grid.bg[offset] = (RGBA){ .r = bg.r, .g = bg.g, .b = bg.b };
+static int cursorOffset(void) {
+	return term.cursor.col + term.cursor.row * grid.cols;
 }
-*/
 
 static void addNewRow(void) {
 	term.cursor.row = grid.top_row;
@@ -85,6 +73,16 @@ static void newline(void) {
 	memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
 }
 
+// s points to the next char after ESC
+// returns number of chars consumed
+static int handleEsc(const char* s, int len) {
+	if (len > 2) {
+		char buf[] = {'E', 'S', 'C', ' ', s[0], s[1], '\r', '\n', '\0'};
+		OutputDebugStringA(buf);
+	}
+	return 0;
+}
+
 void terminalWrite(const char* string, int len) {
 	EnterCriticalSection(&term.mutex);
 	if (len < 0)
@@ -105,6 +103,24 @@ void terminalWrite(const char* string, int len) {
 
 		if (c == '\t') {
 			term.cursor.col = 8 * (term.cursor.col / 8 + 1);
+			continue;
+		}
+
+		if (c == '\a') {
+			// TODO DING!!~
+			continue;
+		}
+
+		if (c == '\b') {
+			if (term.cursor.col > 0) {
+				term.cursor.col--;
+				grid.chars[cursorOffset()] = (Char){0};
+			}
+			continue;
+		}
+
+		if (c == '\x1b') {
+			i += handleEsc(string + i + 1, len - i - 1);
 			continue;
 		}
 
