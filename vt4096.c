@@ -6,6 +6,13 @@
 #include "glext.h"
 
 #ifdef _DEBUG
+#define FONT_NAME "Comic Mono"
+#else
+#define FONT_NAME "Courier New"
+#endif
+#define FONT_SIZE 18
+
+#ifdef _DEBUG
 #include <stdio.h>
 static const char *getGlErrorStr(int error) {
 	switch (error) {
@@ -82,9 +89,6 @@ static void checkGLError(const char* file, int line, const char* func) {
 LIST_GL_FUNCS(X)
 #undef X
 
-#define FONT_NAME "Courier New"
-#define FONT_SIZE 18
-
 #define LIST_TEXTURES(X) \
 	X(FontAtlas) \
 	X(GridChar) \
@@ -126,7 +130,8 @@ static __forceinline void makeFontAtlas(void) {
 		ANSI_CHARSET, // iCharSet,
 		OUT_DEFAULT_PRECIS, // iOutPrecision,
 		CLIP_DEFAULT_PRECIS, // iClipPrecision,
-		NONANTIALIASED_QUALITY, // iQuality,
+		DEFAULT_QUALITY, // iQuality,
+		//NONANTIALIASED_QUALITY, // iQuality,
 		DEFAULT_PITCH | FF_DONTCARE, // iPitchAndFamily,
 		TEXT(FONT_NAME) // pszFaceName
 	);
@@ -275,7 +280,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	switch (msg) {
 #if 0
 	case WM_PAINT: {
-		OutputDebugStringA("PAIN\n");
+		debugPrintf("PAIN\n");
 		PAINTSTRUCT ps = { 0 };
 		BeginPaint(hwnd, &ps);
 		paint();
