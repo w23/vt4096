@@ -201,6 +201,10 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 	case 'm':
 		performCSISelectGraphicsRendition(argc, argv);
 		break;
+	case 'H':
+		term.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
+		term.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
+		break;
 	default:
 		debugPrintf("Unhandled CSI commmand='%c', argc=%d\n", cmd, argc);
 	}

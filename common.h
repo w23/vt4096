@@ -17,6 +17,12 @@ typedef unsigned int u32;
 
 extern HWND mainWindow;
 
+static inline int clampi(int v, int min, int max) {
+	if (v < min) return min;
+	if (v > max) return max;
+	return v;
+}
+
 #ifdef _DEBUG
 #include <varargs.h>
 #include <stdio.h>
