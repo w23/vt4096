@@ -188,8 +188,38 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 		// default background
 		term.bg = kDefaultBackgroundColor;
 		break;
+	case 90:
+	case 91:
+	case 92:
+	case 93:
+	case 94:
+	case 95:
+	case 96:
+	case 97:
+		term.color = kBrightColorTable[argv[0] - 90];
+		break;
+	case 100:
+	case 101:
+	case 102:
+	case 103:
+	case 104:
+	case 105:
+	case 106:
+	case 107:
+		term.bg = kBrightColorTable[argv[0] - 100];
+		break;
 	default:
 		debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
+	}
+}
+
+static void performCSIECH(int n) {
+	const int row_offset = term.cursor.row * grid.cols + term.cursor.col;
+	for (int i = 0; i < n && (i + term.cursor.col) < grid.cols; ++i) {
+		const int off = row_offset + i;
+		grid.chars[off] = charForChar(' ');
+		grid.color[off] = term.color;
+		grid.bg[off] = term.bg;
 	}
 }
 
@@ -204,6 +234,14 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 	case 'H':
 		term.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
 		term.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
+		break;
+	case 'l':
+		// Cursor Horizontal (Forward) Tab
+		term.cursor.col = 8 * (term.cursor.col / 8 + 1);
+		break;
+	case 'X':
+		// Erase Character
+		performCSIECH(argv[0]);
 		break;
 	default:
 		debugPrintf("Unhandled CSI commmand='%c', argc=%d\n", cmd, argc);
