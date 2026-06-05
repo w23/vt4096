@@ -16,3 +16,18 @@ typedef unsigned char u8;
 typedef unsigned int u32;
 
 extern HWND mainWindow;
+
+#ifdef _DEBUG
+#include <varargs.h>
+#include <stdio.h>
+static inline void debugPrintf(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	char buf[1024];
+	vsnprintf(buf, sizeof(buf), fmt, args);
+	OutputDebugStringA(buf);
+	va_end(args);
+}
+#else
+#define debugPrintf()
+#endif

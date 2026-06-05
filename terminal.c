@@ -7,12 +7,6 @@
 
 Grid grid = { 0 };
 
-void _memset(void* dst, int val, size_t size) {
-	char* d = dst;
-	for (size_t i = 0; i < size; ++i)
-		d[i] = (char)val;
-}
-
 static struct {
 	// col can point to beyond grid.cols (would mean line wrap on the next write)
 	// row must always point to a valid row
@@ -76,16 +70,68 @@ static void newline(void) {
 	if (term.cursor.row >= grid.top_row) {
 		addNewRow();
 	}
-	_memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
+	memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
+}
+
+static int handleControlSequenceIntroducer(const char* s, int len) {
+	if (len == 0)
+		return 0;
+
+	// DEBUG
+	debugPrintf("ESC CSI ");
+	int i = 0;
+	for (; i < len; ++i) {
+		const u8 c = s[i];
+		debugPrintf("%c", c);
+		if (c >= 0x40 && c <= 0x7E)
+			break;
+	}
+	debugPrintf("\n");
+	return i;
+}
+
+static int handleOperatingSystemCommand(char* s, int len) {
+	if (len == 0)
+		return 0;
+
+	if (s[0] == '0') {
+		// Set window title
+		for (int i = 2; i < len; ++i) {
+			if (s[i] == 0x07 || s[i] == 0x9c) {
+				s[i] = '\0';
+				SetWindowTextA(mainWindow, s + 2); // s+2 skips '0;'
+				return i + 1;
+			}
+		}
+	}
+
+	// DEBUG
+	debugPrintf("ESC OSC ");
+	int i;
+	for (i = 0; i < len; ++i) {
+		const u8 c = s[i];
+		debugPrintf("%c", c);
+		if (c == 0x07 || c == 0x9c) {
+			debugPrintf("[%02x]", c);
+			break;
+		}
+	}
+	debugPrintf("\n");
+	return i;
 }
 
 // s points to the next char after ESC
 // returns number of chars consumed
-static int handleEsc(const char* s, int len) {
-	if (len > 2) {
-		char buf[] = {'E', 'S', 'C', ' ', s[0], s[1], '\r', '\n', '\0'};
-		OutputDebugStringA(buf);
+static int handleEsc(char* s, int len) {
+	if (len == 0)
+		return 0;
+
+	switch (s[0]) {
+	case '[': return handleControlSequenceIntroducer(s + 1, len - 1);
+	case ']': return handleOperatingSystemCommand(s + 1, len - 1);
 	}
+
+	debugPrintf("ESC %c\n", s[0]);
 	return 0;
 }
 
