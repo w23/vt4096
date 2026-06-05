@@ -298,6 +298,15 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 		}
 		return 0; // 0 = processed this message
 	}
+
+	case WM_KEYDOWN:
+		switch (wparam) {
+		case VK_UP: shellWrite("\x1b[1A", -1); break;
+		case VK_DOWN: shellWrite("\x1b[1B", -1); break;
+		case VK_RIGHT: shellWrite("\x1b[1C", -1); break;
+		case VK_LEFT: shellWrite("\x1b[1D", -1); break;
+		}
+		break;
 	case WM_SIZE: {
 		const unsigned int width = (unsigned int)(lparam & 0xffff), height = (unsigned int)(lparam >> 16);
 		resize(width, height);

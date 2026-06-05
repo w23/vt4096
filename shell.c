@@ -155,7 +155,11 @@ void shellResize(int cols, int rows) {
 }
 
 void shellWrite(const char* str, int len) {
-	assert(len);
+	if (len < 0)
+		len = strlen(str);
+	if (len == 0)
+		return;
+
 	// TODO async?
 	DWORD written = 0;
 	const BOOL result = WriteFile(shell.userInput, str, len, &written, NULL);

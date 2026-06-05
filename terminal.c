@@ -223,8 +223,39 @@ static void performCSIECH(int n) {
 	}
 }
 
+static void performCsiEl(int n) {
+	int begin = 0, end = grid.cols;
+	switch (n) {
+	case 0: begin = term.cursor.col; break;
+	case 1: end = term.cursor.col; break;
+	}
+
+	const int offset = grid.cols * term.cursor.row;
+	for (int i = begin; i < end; ++i) {
+		grid.chars[offset + i] = (Char){ 0 };
+	}
+}
+
 static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 	switch (cmd) {
+	case 'A': { // Up
+		const int n = argv[0] % grid.rows;
+		term.cursor.row = (term.cursor.row + grid.rows - n) % grid.rows;
+		break;
+	}
+	case 'B': { // Down
+		const int n = argv[0] % grid.rows;
+		term.cursor.row = (term.cursor.row + n) % grid.rows;
+		break;
+	}
+	case 'C': { // Forward/Right
+		term.cursor.col = clampi(term.cursor.col + argv[0], 0, grid.cols);
+		break;
+	}
+	case 'D': { // Backward/Left
+		term.cursor.col = clampi(term.cursor.col - argv[0], 0, grid.cols);
+		break;
+	}
 	case 'J':
 		performCSIEraseInDisplay(argv[0]);
 		break;
@@ -233,6 +264,7 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 		break;
 	case 'H':
 		term.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
+		// FIXME mind the top_row
 		term.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
 		break;
 	case 'l':
@@ -242,6 +274,11 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 	case 'X':
 		// Erase Character
 		performCSIECH(argv[0]);
+		break;
+	case 'K':
+		// Erase In Line
+		// Used by e.g. neofetch
+		performCsiEl(argv[0]);
 		break;
 	default:
 		debugPrintf("Unhandled CSI commmand='%c', argc=%d\n", cmd, argc);
