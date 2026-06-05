@@ -197,8 +197,7 @@ static GLint compileShader(GLuint type, const char* src) {
 	glShaderSource(fsId, 1, &src, 0);
 	glCompileShader(fsId);
 
-#define SHADER_DEBUG
-#ifdef SHADER_DEBUG
+#ifdef _DEBUG
 	int result;
 	char info[2048];
 	glGetObjectParameterivARB(fsId, GL_OBJECT_COMPILE_STATUS_ARB, &result);
@@ -311,8 +310,14 @@ static const PIXELFORMATDESCRIPTOR kPfd = { sizeof(kPfd), 0,
 	PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0 };
 
+#ifdef _DEBUG
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow) {
 	(void)hPrevInstance; (void)lpCmdLine;
+#else
+int WinMainCRTStartup(void) {
+	const HINSTANCE hInstance = GetModuleHandle(NULL);
+	const int nCmdShow = SW_NORMAL;
+#endif
 	const WNDCLASSEX wndclass = {
 		.cbSize = sizeof(wndclass),
 		.lpszClassName = TEXT("VT4096"),
@@ -366,7 +371,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 		} \
 	}
 #else
-#define X(t) { \
+#define X(t) \
 	glUniform1i(glGetUniformLocation(prog, #t), Tex##t);
 #endif
 	LIST_TEXTURES(X)

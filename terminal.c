@@ -7,6 +7,12 @@
 
 Grid grid = { 0 };
 
+void _memset(void* dst, int val, size_t size) {
+	char* d = dst;
+	for (size_t i = 0; i < size; ++i)
+		d[i] = (char)val;
+}
+
 static struct {
 	// col can point to beyond grid.cols (would mean line wrap on the next write)
 	// row must always point to a valid row
@@ -70,7 +76,7 @@ static void newline(void) {
 	if (term.cursor.row >= grid.top_row) {
 		addNewRow();
 	}
-	memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
+	_memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
 }
 
 // s points to the next char after ESC

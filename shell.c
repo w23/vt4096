@@ -61,17 +61,46 @@ static void createConsole(COORD size) {
 	shell.shellOutput = output.read;
 }
 
+// Stripped function type declaration
+typedef BOOL(WINAPI* fn_InitProcThreadAttributeList)(
+	void* lpAttributeList,
+	DWORD dwAttributeCount,
+	DWORD dwFlags,
+	SIZE_T* lpSize
+	);
+
+typedef BOOL (WINAPI* fn_UpdateProcThreadAttribute)(
+    LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList,
+    DWORD dwFlags,
+    DWORD_PTR Attribute,
+    PVOID lpValue,
+    SIZE_T cbSize,
+    PVOID lpPreviousValue,
+    PSIZE_T lpReturnSize
+    );
+
+fn_InitProcThreadAttributeList InitializeProcThreadAttributeList_ = NULL;
+fn_UpdateProcThreadAttribute UpdateProcThreadAttribute_ = NULL;
+
+static void loadFuncs(void) {
+	HMODULE hMod = GetModuleHandleW(L"kernel32.dll"); // kernel32 is always loaded
+	InitializeProcThreadAttributeList_ = (fn_InitProcThreadAttributeList)(void*)GetProcAddress(hMod, "InitializeProcThreadAttributeList");
+	UpdateProcThreadAttribute_ = (fn_UpdateProcThreadAttribute)(void*)GetProcAddress(hMod, "UpdateProcThreadAttribute");
+}
+
 void PrepareStartupInformation(HPCON hpc, STARTUPINFOEXA* psi) {
-	size_t bytesRequired;
-	InitializeProcThreadAttributeList(NULL, 1, 0, &bytesRequired);
+	loadFuncs();
+
+	SIZE_T bytesRequired = 0;
+	InitializeProcThreadAttributeList_(NULL, 1, 0, &bytesRequired);
 
 	// Prepare Startup Information structure
 	psi->lpAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST)HeapAlloc(GetProcessHeap(), 0, bytesRequired);
 
-	InitializeProcThreadAttributeList(psi->lpAttributeList, 1, 0, &bytesRequired);
+	InitializeProcThreadAttributeList_(psi->lpAttributeList, 1, 0, &bytesRequired);
 
 	// Set the pseudoconsole information into the list
-	UpdateProcThreadAttribute(psi->lpAttributeList,
+	UpdateProcThreadAttribute_(psi->lpAttributeList,
 		0,
 		PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
 		hpc,
@@ -87,6 +116,7 @@ static DWORD WINAPI shellReadThread(LPVOID arg) {
 		char buf[4096];
 		DWORD bytes_read = 0;
 		const BOOL result = ReadFile(shell.shellOutput, buf, sizeof(buf), &bytes_read, NULL);
+		(void)result;
 		assert(result);
 		if (bytes_read == 0)
 			continue;
@@ -129,6 +159,7 @@ void shellWrite(const char* str, int len) {
 	// TODO async?
 	DWORD written = 0;
 	const BOOL result = WriteFile(shell.userInput, str, len, &written, NULL);
+	(void)result;
 	assert(result);
 	assert(written == (DWORD)len);
 }

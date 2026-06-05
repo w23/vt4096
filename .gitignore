@@ -6,3 +6,5 @@
 vt4096
 x64
 *.user
+/Compress
+/Debug
