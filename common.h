@@ -29,5 +29,5 @@ static inline void debugPrintf(const char* fmt, ...) {
 	va_end(args);
 }
 #else
-#define debugPrintf()
+#define debugPrintf(...)
 #endif
