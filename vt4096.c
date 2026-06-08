@@ -126,6 +126,7 @@ static struct GLOBALS__ {
 	GLuint textures[Tex_COUNT];
 
 	GLint uniform_resolution;
+	GLint uniform_gridSize;
 	GLint uniform_topRow;
 } g;
 
@@ -243,27 +244,36 @@ static const char* kFrag =
 #define X(t) "uniform sampler2D " #t ";\n"
 LIST_TEXTURES(X)
 #undef X
-"uniform vec2 charSize;\n"
 "uniform vec2 resolution;\n"
+"uniform vec2 charSize;\n"
+"uniform vec2 gridSize;\n"
 "uniform float topRow;\n"
 "vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
-"	vec2 char_coord = floor((gl_FragCoord.xy - .5) / charSize);\n"
-"	vec2 cc = char_coord + .5;\n"
-"	cc.y = textureSize(GridChar, 0).y - cc.y + topRow;\n"
-"	vec4 char_loc = tex(GridChar, cc);\n"
-"	vec4 color = tex(GridColor, cc);\n"
-"	vec4 bg = tex(GridBg, cc);\n"
-//"	bg = vec4(cc.y / textureSize(GridChar, 0).y);\n"
+	// in pixels, +.5 sample position included
+"	vec2 screen_pix = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);\n"
+	// do not draw partial glyps outside of the grid
+"	vec2 grid_texel = floor((screen_pix.xy - .5) / charSize);\n"
+"	if (any(greaterThanEqual(grid_texel, gridSize))) { gl_FragColor = vec4(0.); return; }\n"
+
+// Exact pixel sample coordinated (+.5) to read from the grid, offset by topRow ring buffer
+"	vec2 grid_sample_texel = grid_texel + .5 + vec2(0., topRow);\n"
+"	vec4 char_loc = tex(GridChar, grid_sample_texel);\n"
+"	vec4 color = tex(GridColor, grid_sample_texel);\n"
+"	vec4 bg = tex(GridBg, grid_sample_texel);\n"
+
+// Coordinates within a single on-screen grid char
+"	vec2 char_pix = mod(screen_pix.xy, charSize);\n"
+// GL coord system to GDI
+"	char_pix.y = charSize.y - char_pix.y;\n"
+
 "	vec2 atlasCharSize = charSize;\n"
 "	vec2 glyph_offset = char_loc.rg * 255. * atlasCharSize;\n"
-//"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize;\n"
-"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize + glyph_offset;\n"
+
+"	vec2 atlas_pix = char_pix + glyph_offset;\n"
 "	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
 //"	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
 "	gl_FragColor = mix(bg, color, glyph.r);\n"
-//"	gl_FragColor = vec4(cc.y / textureSize(GridChar, 0).y);\n"
-//"	gl_FragColor += vec4(1., 0., 0., 1.) * tex(FontAtlas, gl_FragCoord.xy);\n"
 "}";
 
 //GLint makeProgram(const char* vert, const char* frag) {
@@ -285,9 +295,13 @@ static void uploadGrid(void) {
 }
 
 static void resize(int w, int h) {
-	glUniform2f(g.uniform_resolution, (float)w, (float)h);
 	glViewport(0, 0, w, h);
-	terminalResize(w / g.charWidth, h / g.charHeight);
+	const int cols = w / g.charWidth;
+	const int rows = h / g.charHeight;
+	glUniform2f(g.uniform_resolution, (float)w, (float)h);
+	glUniform2f(g.uniform_gridSize, (float)cols, (float)rows);
+	terminalResize(cols, rows);
+	shellResize(cols, rows);
 }
 
 static void paint(void) {
@@ -370,7 +384,8 @@ int WinMainCRTStartup(void) {
 	const int h = 32 * g.charHeight;
 
 	RECT r = { 0, 0, w, h };
-	const unsigned int windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	//const unsigned int windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	const unsigned int windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
 	AdjustWindowRectEx(&r, windowStyle, FALSE, 0);
 
 	mainWindow = CreateWindowEx(
@@ -393,6 +408,7 @@ int WinMainCRTStartup(void) {
 
 	const GLint prog = makeProgram(kFrag);
 	g.uniform_resolution = glGetUniformLocation(prog, "resolution");
+	g.uniform_gridSize = glGetUniformLocation(prog, "gridSize");
 	g.uniform_topRow = glGetUniformLocation(prog, "topRow");
 
 	glUseProgram(prog);
