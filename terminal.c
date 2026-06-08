@@ -39,13 +39,12 @@ static struct {
 	RGBA color, bg;
 
 	CRITICAL_SECTION mutex;
-} term = {
-	.color = {255, 255, 255, 255},
-	.bg = {0,0,0,0},
-};
+} term;
 
 void terminalInit(void) {
 	InitializeCriticalSection(&term.mutex);
+	term.color = kDefaultForegroundColor;
+	term.bg = kDefaultBackgroundColor;
 }
 
 void terminalResize(unsigned int w, unsigned int h) {
@@ -54,28 +53,34 @@ void terminalResize(unsigned int w, unsigned int h) {
 	grid.cols = w;
 	grid.rows = h;
 
+	// TODO: verify that Windows+ConPTY pushes the contents itself on resize
 	// FIXME Handle top_row
 	// - smaller?
 	// - bigger?
 }
 
 void terminalClear(void) {
-	grid.top_row = grid.rows - 1;
+	grid.top_row = 0;
 	grid.dirty = 1;
 	memset(grid.chars, 0, sizeof(grid.chars));
+	// TODO clear colors
+}
+
+static int computeOffset(int col, int row) {
+	return col + ((row + grid.top_row) % grid.rows) * grid.cols;
 }
 
 static int cursorOffset(void) {
-	return term.cursor.col + term.cursor.row * grid.cols;
+	return computeOffset(term.cursor.col, term.cursor.row);
 }
 
 static void addNewRow(void) {
-	term.cursor.row = grid.top_row;
-	const int offset = grid.cols * term.cursor.row;
+	// Adds new row at `top_row` position and clears it
+	const int row_offset = grid.cols * grid.top_row;
 	for (int col = 0; col < grid.cols; ++col) {
-		grid.chars[offset + col] = (Char){ 0 };
-		grid.color[offset + col] = (RGBA){ 0 };
-		grid.bg[offset + col] = term.bg;
+		grid.chars[row_offset + col] = (Char){ 0 };
+		grid.color[row_offset + col] = (RGBA){ 0 };
+		grid.bg[row_offset + col] = term.bg;
 	}
 	grid.top_row = (grid.top_row + 1) % grid.rows;
 }
@@ -92,10 +97,11 @@ static Char charForChar(unsigned int unicode_char) {
 
 static void newline(void) {
 	term.cursor.row++;
-	if (term.cursor.row >= grid.top_row) {
+	if (term.cursor.row >= grid.rows) {
+		term.cursor.row = grid.rows - 1;
 		addNewRow();
 	}
-	memset(grid.chars + term.cursor.row * grid.cols, 0, sizeof(grid.chars[0]) * grid.cols);
+	// TODO do we need to clear new row?
 }
 
 static int handleCSIQuestion(const char* s, int len) {
@@ -214,9 +220,9 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 }
 
 static void performCSIECH(int n) {
-	const int row_offset = term.cursor.row * grid.cols + term.cursor.col;
+	const int cursor_offset = cursorOffset();
 	for (int i = 0; i < n && (i + term.cursor.col) < grid.cols; ++i) {
-		const int off = row_offset + i;
+		const int off = cursor_offset + i;
 		grid.chars[off] = charForChar(' ');
 		grid.color[off] = term.color;
 		grid.bg[off] = term.bg;
@@ -230,7 +236,7 @@ static void performCsiEl(int n) {
 	case 1: end = term.cursor.col; break;
 	}
 
-	const int offset = grid.cols * term.cursor.row;
+	const int offset = computeOffset(0, term.cursor.row);
 	for (int i = begin; i < end; ++i) {
 		grid.chars[offset + i] = (Char){ 0 };
 	}
@@ -264,7 +270,6 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 		break;
 	case 'H':
 		term.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
-		// FIXME mind the top_row
 		term.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
 		break;
 	case 'l':
@@ -433,7 +438,7 @@ void terminalWrite(const char* string, int len) {
 			newline();
 		}
 
-		const int offset = term.cursor.col + term.cursor.row * grid.cols;
+		const int offset = cursorOffset();
 		grid.chars[offset] = charForChar(c);
 		grid.color[offset] = term.color;
 		grid.bg[offset] = term.bg;

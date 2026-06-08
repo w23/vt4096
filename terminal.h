@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
 	int cols, rows;
-	int top_row;
+	int top_row; // grid is circular buffer. first (top) row starts with this row index.
 	int dirty;
 
 	Char chars[MAX_GRID_SIZE];
