@@ -117,6 +117,7 @@ int WinMainCRTStartup(void) {
 }
 
 void windowResize(int cols, int rows) {
+	(void)cols; (void)rows;
 	debugPrintf("windowResize(%d, %d) not implemented\n", cols, rows);
 	// TODO
 	//RECT r = { 0, 0, cols * font.charWidth, rows * font.charHeight };
