@@ -24,6 +24,7 @@
     - [ ] use fg color for block, invert fg/bg colors for char?
 - [ ] `exit` -- detect when child process dies
 - [x] Window resize
+- [ ] SGR 4/24: underline -- LickWeed TMDC entry needs this
 
 ## Unicode
 - [ ] unicode support

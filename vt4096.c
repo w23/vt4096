@@ -16,16 +16,14 @@ static void resize(int w, int h) {
 
 static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
-#if 0
 	case WM_PAINT: {
-		debugPrintf("PAIN\n");
+		//debugPrintf("PAIN\n");
 		PAINTSTRUCT ps = { 0 };
 		BeginPaint(hwnd, &ps);
 		renderPaint();
 		EndPaint(hwnd, &ps);
 		return 0;
 	}
-#endif
 	case WM_CHAR: {
 		// TODO convert to UTF-8
 		const char c = (char)wparam;
@@ -110,10 +108,8 @@ int WinMainCRTStartup(void) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 
-		// FIXME this adds one frame of latency per each message.
-		// TODO do this only once per batch of messages
 		if (grid.dirty) {
-			renderPaint();
+			InvalidateRect(mainWindow, NULL, TRUE); // Request repaint
 		}
 	}
 
