@@ -5,12 +5,26 @@
 #include <gl/GL.h>
 #include "glext.h"
 
+// Use the same Terminal font that cmd.exe uses by default
+#define USE_TERMINAL_FONT
+#define TERMINAL_FONT_SIZE 12, 8
+//#define TERMINAL_FONT_SIZE 8, 8
+
+#ifndef USE_TERMINAL_FONT
+#define FONT_PRECIS OUT_DEFAULT_PRECIS // iOutPrecision,
+//#define FONT_PRECIS OUT_RASTER_PRECIS // iOutPrecision,
+#define FONT_QUALITY DEFAULT_QUALITY
+//#define FONT_QUALITY NONANTIALIASED_QUALITY
+
 #ifdef _DEBUG
 #define FONT_NAME "Comic Mono"
+//#define FONT_NAME "Consolas"
+//#define FONT_NAME "Lucida Console"
 #else
-#define FONT_NAME "Courier New"
+#define FONT_NAME "Consolas"
 #endif
 #define FONT_SIZE 18
+#endif
 
 #ifdef _DEBUG
 #include <stdio.h>
@@ -118,6 +132,14 @@ static struct GLOBALS__ {
 HWND mainWindow;
 
 static __forceinline void makeFontAtlas(void) {
+#ifdef USE_TERMINAL_FONT
+	const HFONT font = CreateFont(
+		TERMINAL_FONT_SIZE, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		OEM_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN,
+		TEXT("Terminal")
+	);
+#else
 	const HFONT font = CreateFont(
 		FONT_SIZE, // cHeight
 		0, // cWidth
@@ -128,13 +150,13 @@ static __forceinline void makeFontAtlas(void) {
 		FALSE, // bUnderline,
 		FALSE, // bStrikeOut,
 		ANSI_CHARSET, // iCharSet,
-		OUT_DEFAULT_PRECIS, // iOutPrecision,
+		FONT_PRECIS, // iOutPrecision,
 		CLIP_DEFAULT_PRECIS, // iClipPrecision,
-		DEFAULT_QUALITY, // iQuality,
-		//NONANTIALIASED_QUALITY, // iQuality,
-		DEFAULT_PITCH | FF_DONTCARE, // iPitchAndFamily,
+		FONT_QUALITY, // iQuality,
+		FIXED_PITCH | FF_MODERN, // iPitchAndFamily,
 		TEXT(FONT_NAME) // pszFaceName
 	);
+#endif
 
 	const HDC text_dc = CreateCompatibleDC(NULL);
 	SelectObject(text_dc, font);
@@ -238,7 +260,7 @@ LIST_TEXTURES(X)
 //"	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize;\n"
 "	vec2 atlas_pix = gl_FragCoord.xy - char_coord * charSize + glyph_offset;\n"
 "	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
-// "	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
+//"	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
 "	gl_FragColor = mix(bg, color, glyph.r);\n"
 //"	gl_FragColor = vec4(cc.y / textureSize(GridChar, 0).y);\n"
 //"	gl_FragColor += vec4(1., 0., 0., 1.) * tex(FontAtlas, gl_FragCoord.xy);\n"
