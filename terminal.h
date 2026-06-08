@@ -22,6 +22,10 @@ typedef struct {
 	int top_row; // grid is circular buffer. first (top) row starts with this row index.
 	int dirty;
 
+	// col can point to beyond grid.cols (would mean line wrap on the next write)
+	// row must always point to a valid row
+	struct { int col, row; } cursor;
+
 	Char chars[MAX_GRID_SIZE];
 	RGBA color[MAX_GRID_SIZE];
 	RGBA bg[MAX_GRID_SIZE];

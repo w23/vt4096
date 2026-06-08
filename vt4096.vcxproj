@@ -112,12 +112,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="font.c" />
+    <ClCompile Include="render.c" />
     <ClCompile Include="shell.c" />
     <ClCompile Include="terminal.c" />
     <ClCompile Include="vt4096.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
+    <ClInclude Include="font.h" />
+    <ClInclude Include="render.h" />
     <ClInclude Include="shell.h" />
     <ClInclude Include="terminal.h" />
   </ItemGroup>

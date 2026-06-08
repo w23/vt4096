@@ -33,9 +33,6 @@ static const RGBA kBrightColorTable[] = {
 };
 
 static struct {
-	// col can point to beyond grid.cols (would mean line wrap on the next write)
-	// row must always point to a valid row
-	struct { int col, row; } cursor;
 	RGBA color, bg;
 
 	CRITICAL_SECTION mutex;
@@ -71,7 +68,7 @@ static int computeOffset(int col, int row) {
 }
 
 static int cursorOffset(void) {
-	return computeOffset(term.cursor.col, term.cursor.row);
+	return computeOffset(grid.cursor.col, grid.cursor.row);
 }
 
 static void addNewRow(void) {
@@ -96,9 +93,9 @@ static Char charForChar(unsigned int unicode_char) {
 }
 
 static void newline(void) {
-	term.cursor.row++;
-	if (term.cursor.row >= grid.rows) {
-		term.cursor.row = grid.rows - 1;
+	grid.cursor.row++;
+	if (grid.cursor.row >= grid.rows) {
+		grid.cursor.row = grid.rows - 1;
 		addNewRow();
 	}
 	// TODO do we need to clear new row?
@@ -141,7 +138,7 @@ static void performCSIEraseInDisplay(int n) {
 		// clear entire screen
 		// AND move cursor to 1,1 (i.e. 0,0)
 		terminalClear();
-		term.cursor.col = term.cursor.row = 0;
+		grid.cursor.col = grid.cursor.row = 0;
 		break;
 	default:
 		// ???
@@ -221,7 +218,7 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 
 static void performCSIECH(int n) {
 	const int cursor_offset = cursorOffset();
-	for (int i = 0; i < n && (i + term.cursor.col) < grid.cols; ++i) {
+	for (int i = 0; i < n && (i + grid.cursor.col) < grid.cols; ++i) {
 		const int off = cursor_offset + i;
 		grid.chars[off] = charForChar(' ');
 		grid.color[off] = term.color;
@@ -232,11 +229,11 @@ static void performCSIECH(int n) {
 static void performCsiEl(int n) {
 	int begin = 0, end = grid.cols;
 	switch (n) {
-	case 0: begin = term.cursor.col; break;
-	case 1: end = term.cursor.col; break;
+	case 0: begin = grid.cursor.col; break;
+	case 1: end = grid.cursor.col; break;
 	}
 
-	const int offset = computeOffset(0, term.cursor.row);
+	const int offset = computeOffset(0, grid.cursor.row);
 	for (int i = begin; i < end; ++i) {
 		grid.chars[offset + i] = (Char){ 0 };
 	}
@@ -246,20 +243,20 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 	switch (cmd) {
 	case 'A': { // Up
 		const int n = argv[0] % grid.rows;
-		term.cursor.row = (term.cursor.row + grid.rows - n) % grid.rows;
+		grid.cursor.row = (grid.cursor.row + grid.rows - n) % grid.rows;
 		break;
 	}
 	case 'B': { // Down
 		const int n = argv[0] % grid.rows;
-		term.cursor.row = (term.cursor.row + n) % grid.rows;
+		grid.cursor.row = (grid.cursor.row + n) % grid.rows;
 		break;
 	}
 	case 'C': { // Forward/Right
-		term.cursor.col = clampi(term.cursor.col + argv[0], 0, grid.cols);
+		grid.cursor.col = clampi(grid.cursor.col + argv[0], 0, grid.cols);
 		break;
 	}
 	case 'D': { // Backward/Left
-		term.cursor.col = clampi(term.cursor.col - argv[0], 0, grid.cols);
+		grid.cursor.col = clampi(grid.cursor.col - argv[0], 0, grid.cols);
 		break;
 	}
 	case 'J':
@@ -269,12 +266,12 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 		performCSISelectGraphicsRendition(argc, argv);
 		break;
 	case 'H':
-		term.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
-		term.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
+		grid.cursor.col = clampi(argv[1] - 1, 0, grid.cols);
+		grid.cursor.row = clampi(argv[0] - 1, 0, grid.rows);
 		break;
 	case 'l':
 		// Cursor Horizontal (Forward) Tab
-		term.cursor.col = 8 * (term.cursor.col / 8 + 1);
+		grid.cursor.col = 8 * (grid.cursor.col / 8 + 1);
 		break;
 	case 'X':
 		// Erase Character
@@ -399,7 +396,7 @@ void terminalWrite(const char* string, int len) {
 		const unsigned int c = string[i];
 
 		if (c == '\r') {
-			term.cursor.col = 0;
+			grid.cursor.col = 0;
 			continue;
 		}
 
@@ -409,7 +406,7 @@ void terminalWrite(const char* string, int len) {
 		}
 
 		if (c == '\t') {
-			term.cursor.col = 8 * (term.cursor.col / 8 + 1);
+			grid.cursor.col = 8 * (grid.cursor.col / 8 + 1);
 			continue;
 		}
 
@@ -419,8 +416,8 @@ void terminalWrite(const char* string, int len) {
 		}
 
 		if (c == '\b') {
-			if (term.cursor.col > 0) {
-				term.cursor.col--;
+			if (grid.cursor.col > 0) {
+				grid.cursor.col--;
 				grid.chars[cursorOffset()] = (Char){0};
 			}
 			continue;
@@ -433,8 +430,8 @@ void terminalWrite(const char* string, int len) {
 
 		// Output this char
 
-		if (term.cursor.col >= grid.cols) {
-			term.cursor.col = 0;
+		if (grid.cursor.col >= grid.cols) {
+			grid.cursor.col = 0;
 			newline();
 		}
 
@@ -442,7 +439,7 @@ void terminalWrite(const char* string, int len) {
 		grid.chars[offset] = charForChar(c);
 		grid.color[offset] = term.color;
 		grid.bg[offset] = term.bg;
-		term.cursor.col++;
+		grid.cursor.col++;
 	}
 
 	grid.dirty = 1;

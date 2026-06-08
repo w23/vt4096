@@ -1,14 +1,15 @@
 ## Required
 ### KNOWN ISSUES
-- [ ] incorrect row position when manipulating cursor -- probably ring buffer/top row issue. Needs refactoring: treat cursor position in screen coordinate, but grid writes are ring-buffer-offset-aware.
+- [x] incorrect row position when manipulating cursor -- probably ring buffer/top row issue. Needs refactoring: treat cursor position in screen coordinate, but grid writes are ring-buffer-offset-aware.
 
 ### Just enough VT100/ANSI ESC sequences support
-- [ ] DEBUG -- show unsupported ESC sequences in debug 
-- [ ] Color support
+- [x] DEBUG -- show unsupported ESC sequences in debug 
+- [x] Color support
 
 ### Input
 - [x] how to tell shell the grid size? -- resize pseudo terminal func
-- [ ] Cursor movement / arrow keys, home, end
+- [x] Cursor movement / arrow keys
+- [ ] home, end
 - [ ] PgUp, PgDn
 - [ ] DEL
 - [ ] Ctrl+C (Z, ...)
@@ -20,7 +21,7 @@
 ### Misc
 - [ ] Display cursor (with different modes)
 - [ ] `exit` -- detect when child process dies
-- [ ] Window resize
+- [x] Window resize
 
 ## Unicode
 - [ ] unicode support
