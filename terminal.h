@@ -46,3 +46,6 @@ void terminalClear(void);
 
 // Parses esc seqences and other things there
 void terminalWrite(const char* string, int len);
+
+// Callback functions
+void windowResize(int cols, int rows);

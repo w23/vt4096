@@ -302,6 +302,17 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 		// Used by e.g. neofetch
 		performCsiEl(argv[0]);
 		break;
+	case 't':
+		if (argv[0] == 8) {
+			const int cols = argv[2] ? argv[2] : grid.cols;
+			const int rows = argv[1] ? argv[1] : grid.rows;
+			windowResize(cols, rows);
+			break;
+		}
+		else {
+			debugPrintf("Unhandled CSI XTWINOPS 't' Ps=%d command\n", argv[0]);
+			break;
+		}
 	default:
 		debugPrintf("Unhandled CSI commmand='%c', argc=%d\n", cmd, argc);
 	}
@@ -329,7 +340,7 @@ static int handleControlSequenceIntroducer(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
-	//printCSI(s, len);
+	printCSI(s, len);
 
 	if (s[0] == '?') {
 		return 1 + handleCSIQuestion(s + 1, len - 1);

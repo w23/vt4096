@@ -25,6 +25,7 @@
 - [ ] `exit` -- detect when child process dies
 - [x] Window resize
 - [ ] SGR 4/24: underline -- LickWeed TMDC entry needs this
+- [ ] LitteraeFinis doesn't even start (resizes window somehow, and then stops)
 
 ## Unicode
 - [ ] unicode support

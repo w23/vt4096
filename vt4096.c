@@ -115,3 +115,14 @@ int WinMainCRTStartup(void) {
 
 	return 0;
 }
+
+void windowResize(int cols, int rows) {
+	debugPrintf("windowResize(%d, %d) not implemented\n", cols, rows);
+	// TODO
+	//RECT r = { 0, 0, cols * font.charWidth, rows * font.charHeight };
+	//const unsigned int windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	//const unsigned int windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	//AdjustWindowRectEx(&r, windowStyle, FALSE, 0);
+	// FIXME strips window of its decorations, and puts it at origin???
+	//MoveWindow(mainWindow, r.left, r.top, r.right - r.left, r.bottom - r.top, TRUE);
+}
