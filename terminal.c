@@ -7,6 +7,8 @@
 
 Grid grid = { 0 };
 
+#define ESC '\x1b'
+
 static const RGBA kDefaultForegroundColor = { 255, 255, 255, 255 };
 static const RGBA kDefaultBackgroundColor = { 0 };
 
@@ -105,11 +107,29 @@ static int handleCSIQuestion(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
+	{
+		int arg = 0;
+		int i = 0;
+		for (; i < len; ++i) {
+			const char c = s[i];
+			if (c >= '0' && c <= '9') {
+				arg = arg * 10 + c - '0';
+			} else if (arg == 25) {
+				const int hide = (c == 'l');
+				grid.cursor.shape = hide ? CursorShape_Hidden : CursorShape_Block;
+				return i + 1;
+			}
+		}
+	}
+
 	// DEBUG
 	debugPrintf("ESC CSI ? ");
 	int i = 0;
 	for (; i < len; ++i) {
 		const u8 c = s[i];
+		// If another ESC is detected, consider it as a beginning of a new ESC seq
+		if (c == ESC)
+			break;
 		debugPrintf("%c", c);
 		if (c == 'h' || c == 'l') {
 			++i; // eat the char
@@ -292,6 +312,9 @@ static int printCSI(const char* s, int len) {
 	int i = 0;
 	for (; i < len; ++i) {
 		const u8 c = s[i];
+		// If another ESC is detected, consider it as a beginning of a new ESC seq
+		if (c == ESC)
+			break;
 		debugPrintf("%c", c);
 		if (c >= 0x40 && c <= 0x7E) {
 			++i; // eat the char
@@ -361,6 +384,9 @@ static int handleOperatingSystemCommand(char* s, int len) {
 	int i;
 	for (i = 0; i < len; ++i) {
 		const u8 c = s[i];
+		// If another ESC is detected, consider it as a beginning of a new ESC seq
+		if (c == ESC)
+			break;
 		debugPrintf("%c", c);
 		if (c == 0x07 || c == 0x9c) {
 			debugPrintf("[%02x]", c);

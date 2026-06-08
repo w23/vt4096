@@ -17,6 +17,13 @@ typedef struct {
 	unsigned char row, col, plane, unused_;
 } Char;
 
+typedef enum {
+	CursorShape_Hidden,
+	CursorShape_Block,
+	CursorShape_Underline,
+	CursorShape_Bar
+} CursorShape;
+
 typedef struct {
 	int cols, rows;
 	int top_row; // grid is circular buffer. first (top) row starts with this row index.
@@ -24,7 +31,7 @@ typedef struct {
 
 	// col can point to beyond grid.cols (would mean line wrap on the next write)
 	// row must always point to a valid row
-	struct { int col, row; } cursor;
+	struct { int col, row; CursorShape shape; } cursor;
 
 	Char chars[MAX_GRID_SIZE];
 	RGBA color[MAX_GRID_SIZE];

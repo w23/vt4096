@@ -20,6 +20,8 @@
 
 ### Misc
 - [ ] Display cursor (with different modes)
+    - [x] simple block
+    - [ ] use fg color for block, invert fg/bg colors for char?
 - [ ] `exit` -- detect when child process dies
 - [x] Window resize
 

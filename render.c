@@ -65,6 +65,7 @@ static struct GLOBALS__ {
 	GLint uniform_resolution;
 	GLint uniform_gridSize;
 	GLint uniform_topRow;
+	GLint uniform_cursor;
 } render;
 
 static /*__forceinline*/ void initTexture(GLuint tex, int w, int h, int comp, int type, void* data) {
@@ -119,6 +120,7 @@ LIST_TEXTURES(X)
 "uniform vec2 charSize;\n"
 "uniform vec2 gridSize;\n"
 "uniform float topRow;\n"
+"uniform vec3 cursor;\n"
 "vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
 	// in pixels, +.5 sample position included
@@ -145,7 +147,12 @@ LIST_TEXTURES(X)
 "	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
 //"	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
 "	gl_FragColor = mix(bg, color, glyph.r);\n"
-"}";
+"	if (cursor.z > 0) {\n"
+"		if (all(equal(grid_texel, cursor.xy))) {\n"
+"			gl_FragColor.b = 1.;\n"
+"		}\n"
+"	}\n"
+"}\n";
 
 //GLint makeProgram(const char* vert, const char* frag) {
 GLint makeProgram(const char* frag) {
@@ -224,6 +231,7 @@ void renderInit(void) {
 	render.uniform_resolution = glGetUniformLocation(prog, "resolution");
 	render.uniform_gridSize = glGetUniformLocation(prog, "gridSize");
 	render.uniform_topRow = glGetUniformLocation(prog, "topRow");
+	render.uniform_cursor = glGetUniformLocation(prog, "cursor");
 
 	glUseProgram(prog);
 
@@ -258,6 +266,7 @@ void renderPaint(void) {
 	uploadGrid();
 	grid.dirty = 0;
 	glUniform1f(render.uniform_topRow, (float)grid.top_row);
+	glUniform3f(render.uniform_cursor, (float)grid.cursor.col, (float)grid.cursor.row, (float)grid.cursor.shape);
 	glRects(-1, -1, 1, 1);
 	SwapBuffers(render.hdc);
 }
