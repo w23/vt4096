@@ -46,7 +46,7 @@ LIST_GL_FUNCS(X)
 
 #define LIST_TEXTURES(X) \
 	X(FontAtlas) \
-	X(GridChar) \
+	X(GridGlyph) \
 	X(GridColor) \
 	X(GridBg) \
 
@@ -83,7 +83,6 @@ static void uploadTexture(unsigned int texture_index, int w, int h, void* data) 
 	glActiveTexture(GL_TEXTURE0 + texture_index);
 	glBindTexture(GL_TEXTURE_2D, render.textures[texture_index]);
 	initTexture(render.textures[texture_index], w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
 }
 
 static void loadGLFuncs(void) {
@@ -123,6 +122,7 @@ LIST_TEXTURES(X)
 "uniform vec3 cursor;\n"
 "vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
 "void main() {\n"
+//"	gl_FragColor = tex(FontAtlas, gl_FragCoord.xy); return;\n"
 	// in pixels, +.5 sample position included
 "	vec2 screen_pix = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);\n"
 	// do not draw partial glyps outside of the grid
@@ -131,7 +131,8 @@ LIST_TEXTURES(X)
 
 // Exact pixel sample coordinated (+.5) to read from the grid, offset by topRow ring buffer
 "	vec2 grid_sample_texel = grid_texel + .5 + vec2(0., topRow);\n"
-"	vec4 char_loc = tex(GridChar, grid_sample_texel);\n"
+"	vec4 char_loc = tex(GridGlyph, grid_sample_texel);\n"
+//"	gl_FragColor = char_loc * 16.; return;\n"
 "	vec4 color = tex(GridColor, grid_sample_texel);\n"
 "	vec4 bg = tex(GridBg, grid_sample_texel);\n"
 
@@ -140,8 +141,8 @@ LIST_TEXTURES(X)
 // GL coord system to GDI
 "	char_pix.y = charSize.y - char_pix.y;\n"
 
-"	vec2 atlasCharSize = charSize;\n"
-"	vec2 glyph_offset = char_loc.rg * 255. * atlasCharSize;\n"
+"	vec2 atlasGlyphSize = charSize;\n"
+"	vec2 glyph_offset = char_loc.rg * 255. * atlasGlyphSize;\n"
 
 "	vec2 atlas_pix = char_pix + glyph_offset;\n"
 "	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
@@ -167,7 +168,7 @@ GLint makeProgram(const char* frag) {
 }
 
 static void uploadGrid(void) {
-	uploadTexture(TexGridChar, grid.cols, grid.rows, grid.chars);
+	uploadTexture(TexGridGlyph, grid.cols, grid.rows, grid.glyphs);
 	uploadTexture(TexGridColor, grid.cols, grid.rows, grid.color);
 	uploadTexture(TexGridBg, grid.cols, grid.rows, grid.bg);
 }
@@ -224,8 +225,6 @@ void renderInit(void) {
 	loadGLFuncs();
 
 	glGenTextures(Tex_COUNT, render.textures);
-	uploadTexture(TexFontAtlas, font.atlasWidth, font.atlasHeight, font.atlasBits);
-	GL_CHECK();
 
 	const GLint prog = makeProgram(kFrag);
 	render.uniform_resolution = glGetUniformLocation(prog, "resolution");
@@ -263,6 +262,12 @@ void renderResize(int w, int h) {
 }
 
 void renderPaint(void) {
+	if (font.dirty) {
+		// TODO only upload dirty rect
+		uploadTexture(TexFontAtlas, font.atlasWidth, font.atlasHeight, font.atlasBits);
+		GL_CHECK();
+		font.dirty = 0;
+	}
 	uploadGrid();
 	grid.dirty = 0;
 	glUniform1f(render.uniform_topRow, (float)grid.top_row);

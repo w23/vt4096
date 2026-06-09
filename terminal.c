@@ -1,4 +1,5 @@
 ﻿#include "terminal.h"
+#include "font.h"
 #include "common.h"
 
 #include <memory.h>
@@ -61,7 +62,7 @@ void terminalResize(unsigned int w, unsigned int h) {
 void terminalClear(void) {
 	grid.top_row = 0;
 	grid.dirty = 1;
-	memset(grid.chars, 0, sizeof(grid.chars));
+	memset(grid.glyphs, 0, sizeof(grid.glyphs));
 	// TODO clear colors
 }
 
@@ -77,21 +78,16 @@ static void addNewRow(void) {
 	// Adds new row at `top_row` position and clears it
 	const int row_offset = grid.cols * grid.top_row;
 	for (int col = 0; col < grid.cols; ++col) {
-		grid.chars[row_offset + col] = (Char){ 0 };
+		grid.glyphs[row_offset + col] = (AtlasGlyph){ 0 };
 		grid.color[row_offset + col] = (RGBA){ 0 };
 		grid.bg[row_offset + col] = term.bg;
 	}
 	grid.top_row = (grid.top_row + 1) % grid.rows;
 }
 
-static Char charForChar(unsigned int unicode_char) {
-	// TODO unicode and dynamic glyph atlas support
-	return (Char) {
-		// hardcoded values for ANSI const atlas
-		.row = (u8)(unicode_char & 0x0f),
-		.col = (u8)(unicode_char >> 4),
-		.plane = 0,
-	};
+static AtlasGlyph glyphForCodepoint(u32 codepoint) {
+	const GlyphPos gpos = fontGetGlyphPos(codepoint);
+	return (AtlasGlyph) { .u = (u8)gpos.x, .v = (u8)gpos.y };
 }
 
 static void newline(void) {
@@ -240,7 +236,7 @@ static void performCSIECH(int n) {
 	const int cursor_offset = cursorOffset();
 	for (int i = 0; i < n && (i + grid.cursor.col) < grid.cols; ++i) {
 		const int off = cursor_offset + i;
-		grid.chars[off] = charForChar(' ');
+		grid.glyphs[off] = glyphForCodepoint(' ');
 		grid.color[off] = term.color;
 		grid.bg[off] = term.bg;
 	}
@@ -255,7 +251,7 @@ static void performCsiEl(int n) {
 
 	const int offset = computeOffset(0, grid.cursor.row);
 	for (int i = begin; i < end; ++i) {
-		grid.chars[offset + i] = (Char){ 0 };
+		grid.glyphs[offset + i] = (AtlasGlyph){ 0 };
 	}
 }
 
@@ -340,7 +336,7 @@ static int handleControlSequenceIntroducer(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
-	printCSI(s, len);
+	//printCSI(s, len);
 
 	if (s[0] == '?') {
 		return 1 + handleCSIQuestion(s + 1, len - 1);
@@ -410,7 +406,7 @@ static int handleOperatingSystemCommand(char* s, int len) {
 }
 
 // s points to the next char after ESC
-// returns number of chars consumed
+// returns number of glyphs consumed
 static int handleEsc(char* s, int len) {
 	if (len == 0)
 		return 0;
@@ -424,13 +420,51 @@ static int handleEsc(char* s, int len) {
 	return 0;
 }
 
+static void outputCodepoint(u32 codepoint) {
+	if (grid.cursor.col >= grid.cols) {
+		grid.cursor.col = 0;
+		newline();
+	}
+
+	const int offset = cursorOffset();
+	grid.glyphs[offset] = glyphForCodepoint(codepoint);
+	grid.color[offset] = term.color;
+	grid.bg[offset] = term.bg;
+	grid.cursor.col++;
+}
+
+// Expects `string` to be complete and sufficient, e.g. no ESC breaks, no UTF8 breaks.
 void terminalWrite(const char* string, int len) {
 	EnterCriticalSection(&term.mutex);
 	if (len < 0)
 		len = (int)strlen(string);
 
+	//debugPrintf("terminalWrite(\"%.*s\"\n", len, string);
+
+	u32 codepoint = 0;
+	int utf8_left = 0;
 	for (int i = 0; i < len; ++i) {
-		const unsigned int c = string[i];
+		const u8 c = string[i];
+
+		if (utf8_left > 0) {
+			int err = 0;
+			if ((c >> 6) != 0x02) {
+				debugPrintf("Unexpected UTF-8 continuation code '%c' (%02x)\n", c, c);
+				utf8_left = 0;
+				err = 1;
+			} else {
+				codepoint = (codepoint << 6) | (c & 0x3f);
+				utf8_left--;
+			}
+
+			if (utf8_left == 0) {
+				//debugPrintf("Print codepoint %04x %w\n", codepoint, codepoint);
+				outputCodepoint(codepoint);
+				codepoint = 0;
+				if (err == 0)
+					continue;
+			}
+		}
 
 		if (c == '\r') {
 			grid.cursor.col = 0;
@@ -455,7 +489,7 @@ void terminalWrite(const char* string, int len) {
 		if (c == '\b') {
 			if (grid.cursor.col > 0) {
 				grid.cursor.col--;
-				grid.chars[cursorOffset()] = (Char){0};
+				grid.glyphs[cursorOffset()] = (AtlasGlyph){0};
 			}
 			continue;
 		}
@@ -465,18 +499,28 @@ void terminalWrite(const char* string, int len) {
 			continue;
 		}
 
-		// Output this char
-
-		if (grid.cursor.col >= grid.cols) {
-			grid.cursor.col = 0;
-			newline();
+		if ((c & 0x80) == 0) {
+			outputCodepoint(c);
+			continue;
 		}
 
-		const int offset = cursorOffset();
-		grid.chars[offset] = charForChar(c);
-		grid.color[offset] = term.color;
-		grid.bg[offset] = term.bg;
-		grid.cursor.col++;
+		if ((c >> 5) == 0x6) {
+			// 2-byte sequence
+			codepoint = c & 0x1f;
+			utf8_left = 1;
+		}
+
+		if ((c >> 4) == 0xe) {
+			// 3-byte sequence
+			codepoint = c & 0x0f;
+			utf8_left = 2;
+		}
+
+		if ((c >> 3) == 0x1e) {
+			// 4-byte sequence
+			codepoint = c & 0x07;
+			utf8_left = 3;
+		}
 	}
 
 	grid.dirty = 1;

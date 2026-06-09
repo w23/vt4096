@@ -13,9 +13,10 @@ typedef struct {
 	unsigned char r, g, b, a;
 } RGBA;
 
+// References glyph in glyph atlas
 typedef struct {
-	unsigned char row, col, plane, unused_;
-} Char;
+	unsigned char u, v, unused_[2];
+} AtlasGlyph;
 
 typedef enum {
 	CursorShape_Hidden,
@@ -33,7 +34,7 @@ typedef struct {
 	// row must always point to a valid row
 	struct { int col, row; CursorShape shape; } cursor;
 
-	Char chars[MAX_GRID_SIZE];
+	AtlasGlyph glyphs[MAX_GRID_SIZE];
 	RGBA color[MAX_GRID_SIZE];
 	RGBA bg[MAX_GRID_SIZE];
 } Grid;
