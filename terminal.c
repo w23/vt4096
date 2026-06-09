@@ -163,6 +163,27 @@ static void performCSIEraseInDisplay(int n) {
 	}
 }
 
+int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
+	switch (argv[0]) {
+	case 5: // table color
+		debugPrintf("Not implemented\n");
+		if (argc != 2) {
+			debugPrintf("Unexpected argument count for color table\n");
+			return 0;
+		}
+		return 0;
+	case 2: // component color
+		if (argc != 4) {
+			debugPrintf("Unexpected argument count for component color\n");
+		}
+		out->r = (u8)argv[1];
+		out->g = (u8)argv[2];
+		out->b = (u8)argv[3];
+		return 1;
+	}
+	return 0;
+}
+
 static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 	(void)argc;
 	switch (argv[0]) {
@@ -183,7 +204,8 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 		break;
 	case 38:
 		// set foreground rgb
-		debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
+		if (!performCsiSgrColorEx(&term.color, argc - 1, argv + 1))
+			debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
 		break;
 	case 39:
 		// default foreground
@@ -201,7 +223,8 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 		break;
 	case 48:
 		// set background rgb
-		debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
+		if (!performCsiSgrColorEx(&term.bg, argc - 1, argv + 1))
+			debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
 		break;
 	case 49:
 		// default background
@@ -342,7 +365,7 @@ static int handleControlSequenceIntroducer(const char* s, int len) {
 		return 1 + handleCSIQuestion(s + 1, len - 1);
 	}
 
-#define MAX_CSI_ARGS 4
+#define MAX_CSI_ARGS 8
 	int argc = 0, argv[MAX_CSI_ARGS] = { 0 };
 	for (int i = 0; i < len; ++i) {
 		const u8 c = s[i];
