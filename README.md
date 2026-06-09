@@ -35,6 +35,7 @@ This repo is a proof of concept that it is possible to make a useful (for some d
 - Atlas is filled dynamicall as new glyphs are seen.
 - Uses extremely efficient glyph cache hash table with `u32 hash(u32 codepoint){ return codepoint; }` perfect oracle hash function. There are only 64k UTF-16 Unicode chars, or just slightly more 1M in full Unicode spec with surrogates. Each entry in the table is just 2 bytes (and could be 4 bytes at worst), so the entire thing would be just a few megs max.
 - Contains minimal VT100 ESC sequences parser, covering just the sequences I encountered while running random programs and demos I had lying around.
+- Linked-compressed into <4k executable using [Crinkler](https://github.com/runestubbe/Crinkler).
 
 ### Architecture
 TBD
