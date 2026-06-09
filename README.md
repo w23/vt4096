@@ -47,5 +47,6 @@ It is a well established demoscene intro category.
 Why remain being alive?
 
 ## Links
+- [Development streams in Russian](https://www.youtube.com/playlist?list=PLP0z1CQXyu5BIjKpqCIigkdj2uZCom9G4) -- this was lazily developed from scratch live in 7 streams a few hours each.
 - [Alacritty](https://github.com/alacritty/alacritty) -- a serious, functionally complete multiplatform pseudoterminal that I use daily.
 - [refterm](https://github.com/cmuratori/refterm/) -- another attempt at minimalistic terminal, with completely different goals.
