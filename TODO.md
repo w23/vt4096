@@ -2,13 +2,14 @@
 ### KNOWN ISSUES
 - [x] incorrect row position when manipulating cursor -- probably ring buffer/top row issue. Needs refactoring: treat cursor position in screen coordinate, but grid writes are ring-buffer-offset-aware.
 - [ ] "Litterae Finis" doesn't even start (resizes window somehow, and then exits)
+- [ ] nvim editing doesn't show some symbols sometimes.
 
 ### Just enough VT100/ANSI ESC sequences support
 - [x] DEBUG -- show unsupported ESC sequences in debug 
 - [x] Color support
 - [ ] ESC CSI 101
-- [ ] nvim:
-    - [ ] ESC CSI 38m...
+- [x] nvim:
+    - [x] ESC CSI 38m...
 
 ### Input
 - [x] how to tell shell the grid size? -- resize pseudo terminal func
@@ -29,7 +30,7 @@
     - [ ] use fg color for block, invert fg/bg colors for char?
 - [ ] `exit` -- detect when child process dies
 - [x] Window resize
-- [ ] SGR 4/24: underline -- LickWeed TMDC entry needs this
+- [ ] SGR 4/24: underline -- LickWeed TMDC entry "needs" this
 
 ## Unicode
 - [ ] unicode support

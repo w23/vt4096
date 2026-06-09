@@ -531,18 +531,21 @@ void terminalWrite(const char* string, int len) {
 			// 2-byte sequence
 			codepoint = c & 0x1f;
 			utf8_left = 1;
+			continue;
 		}
 
 		if ((c >> 4) == 0xe) {
 			// 3-byte sequence
 			codepoint = c & 0x0f;
 			utf8_left = 2;
+			continue;
 		}
 
 		if ((c >> 3) == 0x1e) {
 			// 4-byte sequence
 			codepoint = c & 0x07;
 			utf8_left = 3;
+			continue;
 		}
 	}
 
