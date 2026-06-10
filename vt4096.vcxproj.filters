@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\3p">
+      <UniqueIdentifier>{09727577-6244-44c0-a1cd-375123f5cbcc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="vt4096.c">
@@ -46,6 +49,12 @@
     </ClInclude>
     <ClInclude Include="font.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="3p\glext.h">
+      <Filter>Header Files\3p</Filter>
+    </ClInclude>
+    <ClInclude Include="3p\KHR\khrplatform.h">
+      <Filter>Header Files\3p</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

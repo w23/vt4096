@@ -6,39 +6,35 @@
 #include <gl/GL.h>
 #include "glext.h"
 
-#define LIST_GL_FUNCS(X) \
+#ifdef _DEBUG
+#define LIST_GL_SHADER_FUNCS(X) \
 	X(PFNGLATTACHSHADERPROC, glAttachShader) \
 	X(PFNGLCOMPILESHADERPROC, glCompileShader) \
 	X(PFNGLCREATEPROGRAMPROC, glCreateProgram) \
 	X(PFNGLCREATESHADERPROC, glCreateShader) \
-	X(PFNGLDRAWBUFFERSPROC, glDrawBuffers) \
-	X(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation) \
-	X(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) \
 	X(PFNGLGETINFOLOGARBPROC, glGetInfoLogARB) \
 	X(PFNGLGETOBJECTPARAMETERIVARBPROC, glGetObjectParameterivARB) \
-	X(PFNGLGETPROGRAMIVPROC, glGetProgramiv) \
+	X(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog) \
 	X(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog) \
-	X(PFNGLGETSHADERIVPROC, glGetShaderiv) \
-	X(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) \
 	X(PFNGLLINKPROGRAMPROC, glLinkProgram) \
 	X(PFNGLSHADERSOURCEPROC, glShaderSource) \
-	X(PFNGLUNIFORM1FPROC, glUniform1f) \
-	X(PFNGLUNIFORM1FVPROC, glUniform1fv) \
-	X(PFNGLUNIFORM1IPROC, glUniform1i) \
-	X(PFNGLUNIFORM1IVPROC, glUniform1iv) \
-	X(PFNGLUNIFORM2FPROC, glUniform2f) \
-	X(PFNGLUNIFORM2FVPROC, glUniform2fv) \
-	X(PFNGLUNIFORM2IVPROC, glUniform2iv) \
-	X(PFNGLUNIFORM3FPROC, glUniform3f) \
-	X(PFNGLUNIFORM3FVPROC, glUniform3fv) \
-	X(PFNGLUNIFORM3IVPROC, glUniform3iv) \
-	X(PFNGLUNIFORM4FPROC, glUniform4f) \
-	X(PFNGLUNIFORM4FVPROC, glUniform4fv) \
-	X(PFNGLUNIFORM4IVPROC, glUniform4iv) \
-	X(PFNGLUSEPROGRAMPROC, glUseProgram) \
-	X(PFNGLACTIVETEXTUREPROC, glActiveTexture) \
 
-	//X(PFNGLCREATESHADERPROGRAMV, glCreateShaderProgramv) \
+#else
+#define LIST_GL_SHADER_FUNCS(X) \
+	X(PFNGLCREATESHADERPROGRAMVPROC, glCreateShaderProgramv) \
+
+#endif
+
+#define LIST_GL_FUNCS(X) \
+	LIST_GL_SHADER_FUNCS(X) \
+	X(PFNGLACTIVETEXTUREPROC, glActiveTexture) \
+	X(PFNGLGETATTRIBLOCATIONPROC, glGetAttribLocation) \
+	X(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation) \
+	X(PFNGLUNIFORM1FPROC, glUniform1f) \
+	X(PFNGLUNIFORM1IPROC, glUniform1i) \
+	X(PFNGLUNIFORM2FPROC, glUniform2f) \
+	X(PFNGLUNIFORM3FPROC, glUniform3f) \
+	X(PFNGLUSEPROGRAMPROC, glUseProgram) \
 
 #define X(t, n) static t n = NULL;
 LIST_GL_FUNCS(X)
@@ -91,6 +87,7 @@ static void loadGLFuncs(void) {
 #undef X
 }
 
+#ifdef _DEBUG
 static GLint compileShader(GLuint type, const char* src) {
 	const int fsId = glCreateShader(type);
 	glShaderSource(fsId, 1, &src, 0);
@@ -109,6 +106,7 @@ static GLint compileShader(GLuint type, const char* src) {
 #endif
 	return fsId;
 }
+#endif
 
 static const char* kFrag =
 "#version 130\n"
@@ -157,14 +155,17 @@ LIST_TEXTURES(X)
 
 //GLint makeProgram(const char* vert, const char* frag) {
 GLint makeProgram(const char* frag) {
+#ifdef _DEBUG
 	const GLint pid = glCreateProgram();
 //	glAttachShader(pid, compileShader(GL_VERTEX_SHADER, vert));
 	glAttachShader(pid, compileShader(GL_FRAGMENT_SHADER, frag));
 	glLinkProgram(pid);
 
 	return pid;
+#else
+	return glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, &frag);
+#endif
 
-	// TODO const GLuint pid = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, sources);
 }
 
 static void uploadGrid(void) {

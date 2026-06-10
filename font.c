@@ -25,7 +25,9 @@
 #else
 #define FONT_NAME "Consolas"
 #endif
+
 #define FONT_SIZE 18
+#define FONT_WIDTH 0
 #endif
 
 #define ATLAS_WIDTH_GLYPHS 64
@@ -56,7 +58,7 @@ void fontInit(void) {
 #else
 	const HFONT hfont = CreateFontW(
 		FONT_SIZE, // cHeight
-		0, // cWidth
+		FONT_WIDTH, // cWidth
 		0, // cEscapement,
 		0, // cOrientation,
 		FW_NORMAL, // cWeight,
