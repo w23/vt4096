@@ -118,8 +118,9 @@ static int performCsiPrivate(int num, int enable) {
 		// Bracketed paste. Neovim uses this.
 		// No paste support yet, ignore.
 		break;
-	case 9001: // cmd.exe sends this to set the terminal to default 80x25 size
-		windowResize(80, 25);
+	case 9001:
+		// win32-input-mode
+		// see https://github.com/microsoft/terminal/blob/main/doc/specs/%234999%20-%20Improved%20keyboard%20handling%20in%20Conpty.md
 		break;
 	default:
 		return 0;
