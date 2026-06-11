@@ -1,8 +1,9 @@
-#include "terminal.h"
+﻿#include "terminal.h"
 #include "shell.h"
 #include "render.h"
 #include "font.h"
 #include "common.h"
+#include <winnls.h>
 
 HWND mainWindow;
 
@@ -28,20 +29,34 @@ static void userResize(int cols, int rows) {
 	SetWindowPos(mainWindow, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
+static wchar_t surrogate[2] = {0};
 static void handleWmChar(WPARAM wparam, LPARAM lparam) {
 	(void)lparam;
 	const wchar_t wchar = (wchar_t)wparam;
 	if (wchar == '\r') {
-		shellWrite("\r\n", 2);
+		shellWrite("\r", 1);
 	// OH WINDOWS WHY ARE YOU SO ~
 	} else if (wchar == '\b') /* Backspace */ {
 		shellWrite("\x7f", 1);
 	} else if (wchar == '\x7f') /* Ctrl+Backspace */ {
 		shellWrite("\b", 1);
 	} else {
-		// TODO handle surrogate pairs
+		// Assume that HIGH, LOW surrogate sequence always happens correctly
+		// 👍
+		const int is_low_surrogate = IS_LOW_SURROGATE(wchar);
+		if (is_low_surrogate) {
+			// 😊
+			surrogate[1] = wchar;
+		} else {
+			surrogate[0] = wchar;
+		}
+
+		// Skip high surrogate, as it will be immediately followed by LOW surrogate
+		if (IS_HIGH_SURROGATE(wchar))
+			return;
+
 		char utf8[4];
-		const int len = WideCharToMultiByte(CP_UTF8, 0, &wchar, 1, utf8, sizeof(utf8), NULL, NULL);
+		const int len = WideCharToMultiByte(CP_UTF8, 0, surrogate, 1 + is_low_surrogate, utf8, sizeof(utf8), NULL, NULL);
 		if (len == 0)
 			debugPrintf("Unable to convert U+%04x to UTF-8\n", wchar);
 		else
