@@ -6,7 +6,6 @@
 vt4096
 x64
 *.user
-/Compress
+/Compress*
 /Debug
-/report-fast.html
-/CompressFast
+/report-*.html

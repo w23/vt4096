@@ -83,7 +83,8 @@ fn_InitProcThreadAttributeList InitializeProcThreadAttributeList_ = NULL;
 fn_UpdateProcThreadAttribute UpdateProcThreadAttribute_ = NULL;
 
 static void loadFuncs(void) {
-	HMODULE hMod = GetModuleHandleW(L"kernel32.dll"); // kernel32 is always loaded
+	// Need to manually load these functions because Crinkler doesn't support it, see https://github.com/runestubbe/Crinkler/issues/17
+	const HMODULE hMod = GetModuleHandleA("kernel32.dll");
 	InitializeProcThreadAttributeList_ = (fn_InitProcThreadAttributeList)(void*)GetProcAddress(hMod, "InitializeProcThreadAttributeList");
 	UpdateProcThreadAttribute_ = (fn_UpdateProcThreadAttribute)(void*)GetProcAddress(hMod, "UpdateProcThreadAttribute");
 }
@@ -118,14 +119,20 @@ static DWORD WINAPI shellReadThread(LPVOID arg) {
 		const BOOL result = ReadFile(shell.shellOutput, buf, sizeof(buf), &bytes_read, NULL);
 		(void)result;
 		assert(result);
-		if (bytes_read == 0)
-			continue;
+		if (bytes_read == 0) {
+			ExitProcess(0);
+		}
 
 		terminalWrite(buf, bytes_read);
 
 		// notify window to redraw
 		PostMessage(mainWindow, WM_USER, 0, 0);
 	}
+}
+
+static void CALLBACK processDiedCallback(LPVOID param, BOOLEAN timerOrWaitFired) {
+	(void)param; (void)timerOrWaitFired;
+	ExitProcess(0);
 }
 
 void shellCreate(int cols, int rows, char *shell_exe) {
@@ -145,6 +152,9 @@ void shellCreate(int cols, int rows, char *shell_exe) {
 		NULL,
 		&sie.StartupInfo,
 		&pi);
+
+	HANDLE dummy = 0;
+	RegisterWaitForSingleObject(&dummy, pi.hProcess, processDiedCallback, NULL, INFINITE, 0);
 
 	CreateThread(NULL, 0, shellReadThread, NULL, 0, NULL);
 
