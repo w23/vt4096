@@ -63,7 +63,10 @@ void terminalClear(void) {
 	grid.top_row = 0;
 	grid.dirty = 1;
 	memset(grid.glyphs, 0, sizeof(grid.glyphs));
-	// TODO clear colors
+	for (int i = 0; i < MAX_GRID_SIZE; ++i) {
+		grid.color[i] = term.color;
+		grid.bg[i] = term.bg;
+	}
 }
 
 static int computeOffset(int col, int row) {
@@ -196,7 +199,7 @@ static void performCSIEraseInDisplay(int n) {
 int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
 	switch (argv[0]) {
 	case 5: // table color
-		debugPrintf("Not implemented\n");
+		debugPrintf("Not implemented 5 table color\n");
 		if (argc != 2) {
 			debugPrintf("Unexpected argument count for color table\n");
 			return 0;
@@ -362,6 +365,9 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 			debugPrintf("Unhandled CSI XTWINOPS 't' Ps=%d command\n", argv[0]);
 			break;
 		}
+	case 'q':
+		// TODO: Set cursor style
+		break;
 	default:
 		debugPrintf("Unhandled CSI commmand='%c', argc=%d\n", cmd, argc);
 	}
@@ -462,6 +468,11 @@ static int handleOperatingSystemCommand(const char* s, int len) {
 		}
 		int PtBegin = i, PtEnd = 0;
 		for (; i < len; ++i) {
+			if (s[i] == ESC) {
+				PtEnd = i;
+				// Variable length command end, do not consume, will be ignored
+				break;
+			}
 			if (s[i] == 0x07 || s[i] == 0x9c) {
 				PtEnd = i;
 				++i; // consume
@@ -505,6 +516,7 @@ static int handleEsc(char* s, int len) {
 	switch (s[0]) {
 	case '[': return 1 + handleControlSequenceIntroducer(s + 1, len - 1);
 	case ']': return 1 + handleOperatingSystemCommand(s + 1, len - 1);
+	case '\\': return 1; // ST, does nothing here, used as an end mark for variable length commands
 	}
 
 	debugPrintf("ESC %c\n", s[0]);
