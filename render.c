@@ -41,13 +41,13 @@ LIST_GL_FUNCS(X)
 #undef X
 
 #define LIST_TEXTURES(X) \
-	X(FontAtlas) \
-	X(GridGlyph) \
-	X(GridColor) \
-	X(GridBg) \
+	X(FontAtlas, A) \
+	X(GridGlyph, G) \
+	X(GridColor, C) \
+	X(GridBg, B) \
 
 enum {
-#define X(t) Tex##t,
+#define X(t, SN) Tex##t,
 LIST_TEXTURES(X)
 #undef X
 
@@ -108,50 +108,7 @@ static GLint compileShader(GLuint type, const char* src) {
 }
 #endif
 
-static const char* kFrag =
-"#version 130\n"
-#define X(t) "uniform sampler2D " #t ";\n"
-LIST_TEXTURES(X)
-#undef X
-"uniform vec2 resolution;\n"
-"uniform vec2 charSize;\n"
-"uniform vec2 gridSize;\n"
-"uniform float topRow;\n"
-"uniform vec3 cursor;\n"
-"vec4 tex(sampler2D T, vec2 pix) { return texture(T, pix / textureSize(T, 0)); }\n"
-"void main() {\n"
-//"	gl_FragColor = tex(FontAtlas, gl_FragCoord.xy); return;\n"
-	// in pixels, +.5 sample position included
-"	vec2 screen_pix = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);\n"
-	// do not draw partial glyps outside of the grid
-"	vec2 grid_texel = floor((screen_pix.xy - .5) / charSize);\n"
-"	if (any(greaterThanEqual(grid_texel, gridSize))) { gl_FragColor = vec4(0.); return; }\n"
-
-// Exact pixel sample coordinated (+.5) to read from the grid, offset by topRow ring buffer
-"	vec2 grid_sample_texel = grid_texel + .5 + vec2(0., topRow);\n"
-"	vec4 char_loc = tex(GridGlyph, grid_sample_texel);\n"
-//"	gl_FragColor = char_loc * 16.; return;\n"
-"	vec4 color = tex(GridColor, grid_sample_texel);\n"
-"	vec4 bg = tex(GridBg, grid_sample_texel);\n"
-
-// Coordinates within a single on-screen grid char
-"	vec2 char_pix = mod(screen_pix.xy, charSize);\n"
-// GL coord system to GDI
-"	char_pix.y = charSize.y - char_pix.y;\n"
-
-"	vec2 atlasGlyphSize = charSize;\n"
-"	vec2 glyph_offset = char_loc.rg * 255. * atlasGlyphSize;\n"
-
-"	vec2 atlas_pix = char_pix + glyph_offset;\n"
-"	vec4 glyph = tex(FontAtlas, atlas_pix);\n"
-//"	vec4 glyph = tex(FontAtlas, gl_FragCoord.xy);\n"
-"	gl_FragColor = mix(bg, color, glyph.r);\n"
-"	if (cursor.z > 0) {\n"
-"		if (all(equal(grid_texel, cursor.xy))) {\n"
-"			gl_FragColor.b = 1.;\n"
-"		}\n"
-"	}\n"
-"}\n";
+#include "grid.h"
 
 //GLint makeProgram(const char* vert, const char* frag) {
 GLint makeProgram(const char* frag) {
@@ -227,17 +184,17 @@ void renderInit(void) {
 
 	glGenTextures(Tex_COUNT, render.textures);
 
-	const GLint prog = makeProgram(kFrag);
-	render.uniform_resolution = glGetUniformLocation(prog, "resolution");
-	render.uniform_gridSize = glGetUniformLocation(prog, "gridSize");
-	render.uniform_topRow = glGetUniformLocation(prog, "topRow");
-	render.uniform_cursor = glGetUniformLocation(prog, "cursor");
+	const GLint prog = makeProgram(grid_glsl);
+	render.uniform_resolution = glGetUniformLocation(prog, "R");
+	render.uniform_gridSize = glGetUniformLocation(prog, "I");
+	render.uniform_topRow = glGetUniformLocation(prog, "T");
+	render.uniform_cursor = glGetUniformLocation(prog, "U");
 
 	glUseProgram(prog);
 
 #ifdef _DEBUG
-#define X(t) { \
-	const GLint loc = glGetUniformLocation(prog, #t); \
+#define X(t, SN) { \
+	const GLint loc = glGetUniformLocation(prog, #SN); \
 	if (loc < 0) { \
 		MessageBoxA(NULL, #t, "uniform not found", 0); \
 	} else { \
@@ -245,24 +202,29 @@ void renderInit(void) {
 	} \
 }
 #else
-#define X(t) \
-glUniform1i(glGetUniformLocation(prog, #t), Tex##t);
+#define X(t, SN) \
+glUniform1i(glGetUniformLocation(prog, #SN), Tex##t);
 #endif
 	LIST_TEXTURES(X)
 #undef X
-		GL_CHECK();
+	GL_CHECK();
 
-	const GLint uniform_charSize = glGetUniformLocation(prog, "charSize");
+	const GLint uniform_charSize = glGetUniformLocation(prog, "S");
 	glUniform2f(uniform_charSize, (float)font.charWidth, (float)font.charHeight);
+	GL_CHECK();
 }
 
 void renderResize(int w, int h) {
 	glViewport(0, 0, w, h);
+	GL_CHECK();
 	glUniform2f(render.uniform_resolution, (float)w, (float)h);
+	GL_CHECK();
 	glUniform2f(render.uniform_gridSize, (float)grid.cols, (float)grid.rows);
+	GL_CHECK();
 }
 
 void renderPaint(void) {
+	GL_CHECK();
 	if (font.dirty) {
 		// TODO only upload dirty rect
 		uploadTexture(TexFontAtlas, font.atlasWidth, font.atlasHeight, font.atlasBits);
@@ -270,9 +232,15 @@ void renderPaint(void) {
 		font.dirty = 0;
 	}
 	uploadGrid();
+	GL_CHECK();
 	grid.dirty = 0;
+	GL_CHECK();
 	glUniform1f(render.uniform_topRow, (float)grid.top_row);
+	GL_CHECK();
 	glUniform3f(render.uniform_cursor, (float)grid.cursor.col, (float)grid.cursor.row, (float)grid.cursor.shape);
+	GL_CHECK();
 	glRects(-1, -1, 1, 1);
+	GL_CHECK();
 	SwapBuffers(render.hdc);
+	GL_CHECK();
 }
