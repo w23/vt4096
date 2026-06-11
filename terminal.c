@@ -13,7 +13,8 @@ Grid grid = { 0 };
 static const RGBA kDefaultForegroundColor = { 255, 255, 255, 255 };
 static const RGBA kDefaultBackgroundColor = { 0 };
 
-static const RGBA kColorTable[] = {
+static RGBA gColorTable[256] = {
+	// 0 - 7
 	{.r = 0, .g = 0, .b = 0, .a = 255},
 	{.r = 196, .g = 0, .b = 0, .a = 255},
 	{.r = 0, .g = 196, .b = 0, .a = 255},
@@ -22,9 +23,8 @@ static const RGBA kColorTable[] = {
 	{.r = 196, .g = 0, .b = 196, .a = 255},
 	{.r = 0, .g = 196, .b = 196, .a = 255},
 	{.r = 196, .g = 196, .b = 196, .a = 255},
-};
 
-static const RGBA kBrightColorTable[] = {
+	// 8 - 15
 	{.r = 78, .g = 78, .b = 78, .a = 255},
 	{.r = 220, .g = 78, .b = 78, .a = 255},
 	{.r = 78, .g = 220, .b = 78, .a = 255},
@@ -33,10 +33,14 @@ static const RGBA kBrightColorTable[] = {
 	{.r = 243, .g = 78, .b = 243, .a = 255},
 	{.r = 78, .g = 243, .b = 243, .a = 255},
 	{.r = 255, .g = 255, .b = 255, .a = 255},
+
+	// 16 - ...
+	// TODO is table generation really smaller than just having it here as a constant?
 };
 
 static struct {
 	RGBA color, bg;
+	int swapped;
 
 	CRITICAL_SECTION mutex;
 } term;
@@ -45,18 +49,17 @@ void terminalInit(void) {
 	InitializeCriticalSection(&term.mutex);
 	term.color = kDefaultForegroundColor;
 	term.bg = kDefaultBackgroundColor;
-}
 
-void terminalResize(unsigned int w, unsigned int h) {
-	assert(w < MAX_GRID_WIDTH);
-	assert(h < MAX_GRID_HEIGHT);
-	grid.cols = w;
-	grid.rows = h;
-
-	// TODO: verify that Windows+ConPTY pushes the contents itself on resize
-	// FIXME Handle top_row
-	// - smaller?
-	// - bigger?
+	// Generate color table
+	RGBA* color = gColorTable + 16;
+	for (u8 r = 0; r < 6; ++r)
+		for (u8 g = 0; g < 6; ++g)
+			for (u8 b = 0; b < 6; ++b)
+				*(color++) = (RGBA){ .r = r, .g = g, .b = b };
+	for (u8 g = 0; g < 24; ++g) {
+		const u8 level = 10 * g + 8;
+		gColorTable[232 + g] = (RGBA){ .r = level, .g = level, .b = level };
+	}
 }
 
 void terminalClear(void) {
@@ -67,6 +70,16 @@ void terminalClear(void) {
 		grid.color[i] = term.color;
 		grid.bg[i] = term.bg;
 	}
+}
+
+void terminalResize(unsigned int w, unsigned int h) {
+	assert(w < MAX_GRID_WIDTH);
+	assert(h < MAX_GRID_HEIGHT);
+	grid.cols = w;
+	grid.rows = h;
+
+	// TODO: verify that Windows+ConPTY pushes the contents itself on resize
+	terminalClear();
 }
 
 static int computeOffset(int col, int row) {
@@ -199,12 +212,12 @@ static void performCSIEraseInDisplay(int n) {
 int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
 	switch (argv[0]) {
 	case 5: // table color
-		debugPrintf("Not implemented 5 table color\n");
 		if (argc != 2) {
 			debugPrintf("Unexpected argument count for color table\n");
 			return 0;
 		}
-		return 0;
+		*out = gColorTable[((u8)argv[1])];
+		return 1;
 	case 2: // component color
 		if (argc != 4) {
 			debugPrintf("Unexpected argument count for component color\n");
@@ -214,6 +227,7 @@ int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
 		out->b = (u8)argv[3];
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -224,6 +238,13 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 		// reset to default
 		term.color = kDefaultForegroundColor;
 		term.bg = kDefaultBackgroundColor;
+		term.swapped = 0;
+		break;
+	case 7:
+		term.swapped = 1;
+		break;
+	case 27:
+		term.swapped = 0;
 		break;
 	case 30:
 	case 31:
@@ -233,7 +254,7 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 	case 35:
 	case 36:
 	case 37:
-		term.color = kColorTable[argv[0] - 30];
+		term.color = gColorTable[argv[0] - 30];
 		break;
 	case 38:
 		// set foreground rgb
@@ -252,7 +273,7 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 	case 45:
 	case 46:
 	case 47:
-		term.bg = kColorTable[argv[0] - 40];
+		term.bg = gColorTable[8 + argv[0] - 40];
 		break;
 	case 48:
 		// set background rgb
@@ -263,6 +284,10 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 		// default background
 		term.bg = kDefaultBackgroundColor;
 		break;
+	case 53:
+	case 55:
+		// TODO overline on-off
+		break;
 	case 90:
 	case 91:
 	case 92:
@@ -271,7 +296,7 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 	case 95:
 	case 96:
 	case 97:
-		term.color = kBrightColorTable[argv[0] - 90];
+		term.color = gColorTable[argv[0] - 90];
 		break;
 	case 100:
 	case 101:
@@ -281,7 +306,7 @@ static void performCSISelectGraphicsRendition(int argc, const int argv[]) {
 	case 105:
 	case 106:
 	case 107:
-		term.bg = kBrightColorTable[argv[0] - 100];
+		term.bg = gColorTable[8 + argv[0] - 100];
 		break;
 	default:
 		debugPrintf("UNSUPPORTED GRAPHICS RENDITION %d\n", argv[0]);
@@ -531,8 +556,8 @@ static void outputCodepoint(u32 codepoint) {
 
 	const int offset = cursorOffset();
 	grid.glyphs[offset] = glyphForCodepoint(codepoint);
-	grid.color[offset] = term.color;
-	grid.bg[offset] = term.bg;
+	grid.color[offset] = term.swapped ? term.bg : term.color;
+	grid.bg[offset] = term.swapped ? term.color : term.bg;
 	grid.cursor.col++;
 }
 

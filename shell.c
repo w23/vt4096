@@ -120,7 +120,7 @@ static DWORD WINAPI shellReadThread(LPVOID arg) {
 		const BOOL result = ReadFile(shell.shellOutput, buf, sizeof(buf), &bytes_read, NULL);
 		(void)result;
 		assert(result);
-		debugPrintf("Read %d bytes\n", bytes_read);
+		//debugPrintf("Read %d bytes\n", bytes_read);
 		if (bytes_read == 0) {
 			ExitProcess(0);
 		}
