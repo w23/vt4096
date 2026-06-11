@@ -1,7 +1,7 @@
 ## Required
 ### KNOWN ISSUES
 - [x] incorrect row position when manipulating cursor -- probably ring buffer/top row issue. Needs refactoring: treat cursor position in screen coordinate, but grid writes are ring-buffer-offset-aware.
-- [ ] "Litterae Finis" doesn't even start (resizes window somehow, and then exits)
+- [x] "Litterae Finis" doesn't even start (resizes window somehow, and then exits)
 - [ ] nvim editing doesn't show some symbols sometimes.
 - [ ] threading model is wack -- only one mutex that doesn't really protect anything. fix it.
 
@@ -35,9 +35,9 @@
 
 ## Unicode
 - [ ] unicode support
-    - [ ] unicode input -- WM_CHAR to utf-8
-        - [ ] single char
-        - [ ] surrogate pairs -- see refterm
+    - [x] unicode input -- WM_CHAR to utf-8
+        - [x] single char
+        - [x] surrogate pairs -- see refterm
     - [x] dynamic atlas
     - [x] unicode font
     - [ ] wide unicode support
