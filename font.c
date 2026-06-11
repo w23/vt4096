@@ -160,7 +160,7 @@ GlyphPos fontGetGlyphPos(u32 codepoint) {
 	// Invert Y for OpenGL's convenience:
 	const int y = ATLAS_HEIGHT_GLYPHS - pos->y - 1;
 	TextOutW(g.dc, pos->x * font.charWidth, y * font.charHeight, &wchar, 1);
-	debugPrintf("Char '%c' (%04x) at %d, %d\n", codepoint, codepoint, pos->x, pos->y);
+	//debugPrintf("Char '%c' (%04x) at %d, %d\n", codepoint, codepoint, pos->x, pos->y);
 
 	if (++g.next.x == ATLAS_WIDTH_GLYPHS) {
 		g.next.x = 0;
