@@ -401,7 +401,7 @@ static int handleControlSequenceIntroducer(const char* s, int len) {
 		return 1 + handleCSIQuestion(s + 1, len - 1);
 	}
 
-#define MAX_CSI_ARGS 8
+#define MAX_CSI_ARGS 16
 	int argc = 0, argv[MAX_CSI_ARGS] = { 0 };
 	for (int i = 0; i < len; ++i) {
 		const u8 c = s[i];

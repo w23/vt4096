@@ -110,15 +110,17 @@ void PrepareStartupInformation(HPCON hpc, STARTUPINFOEXA* psi) {
 		NULL);
 }
 
+// nvim easily sends many tens of kilobytes per write
+static char buf[1024*1024];
 static DWORD WINAPI shellReadThread(LPVOID arg) {
 	(void)arg;
 
 	for (;;) {
-		char buf[4096];
 		DWORD bytes_read = 0;
 		const BOOL result = ReadFile(shell.shellOutput, buf, sizeof(buf), &bytes_read, NULL);
 		(void)result;
 		assert(result);
+		debugPrintf("Read %d bytes\n", bytes_read);
 		if (bytes_read == 0) {
 			ExitProcess(0);
 		}
