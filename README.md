@@ -1,29 +1,35 @@
 # vt4096 -- A "functional enough" Terminal Emulator for Windows in less than 4 kilobytes
 
-This repo is a proof of concept that it is possible to make a useful (for some definition of useful) terminal app for Windows.
+This repo is a proof of concept that it is possible to make a useful (for some definition of useful) terminal app for Windows in less than 4 kilobytes.
 
 ## Features
-- [x] Final release executable file is smaller than 4096 bytes.
+- [ ] Final release executable file is smaller than 4096 bytes.
+    - >100 bytes larger after recent 256 color table fixes (required in Windows 11).
 - [x] Absolutely no error checks or error messages whatsoever in Release mode.
 - [x] Unicode output support.
 - [x] Basic support for minimalistic subset of VT100/ANSI ESC sequences: cursor positioning, clear, color.
-- [x] Runs `cmd.exe` (hardcoded) providing a fully functional shell.
-- [x] Runs [Neovim](https://neovim.io/) (with glitches)
-- [x] Runs [Far Manager](https://farmanager.com/) (with glitches)
-- [x] Runs [Lick Weed by Brainstorm (TMDC 2011)](https://www.pouet.net/prod.php?which=58419) (with occasional glitches)
+- [x] Unicode input support, including UTF-16 surrogates.
+- [x] Runs:
+    - `cmd.exe` (hardcoded) providing a fully functional shell.
+    - [Lick Weed by Brainstorm (TMDC 2011)](https://www.pouet.net/prod.php?which=58419)
+    - [Litterae Finis by Trauma (TMDC 2012)](https://www.pouet.net/prod.php?which=60938)
+    - [Neovim](https://neovim.io/) (with minor glitches)
+        - Functional enough to be 90% dogfooded -- I am writing this README update in this very terminal right now 😏.
+    - [Far Manager](https://farmanager.com/) (with major glitches)
 
 ## TODO
-- [ ] Unicode input support with UTF-16 surrogates.
 - [ ] Functional and extra keys support.
 - [ ] Better VT100/ESC parser -- empirically figure out the minimal subset to support more apps, and to fix existing glitches. Run more demos.
 - [ ] Actually work on binary size. Zero effort had been spent on it being small.
 - [ ] Wide Unicode glyphs support.
+- [ ] Fallback font support for emojis, etc.
 - [ ] Run arbitrary programs specified by a CLI arg.
 - [ ] Unit tests for the basic pseudoterminal ESC parser/state machine.
 
 ## Limitations and known issues
-- Doesn't run [Litterae Finis by Trauma (TMDC 2012)](https://www.pouet.net/prod.php?which=60938) -- it exits right after screen resize.
 - Does not support many of well established ESC sequences, and has no intention of having a complete parser (good luck fitting xterm spec into 4 kilobytes).
+- Does not support emojis out of the box, as Windows builtin fonts don't contain them.
+- Won't support color fonts, as GDI functions are unable to render them, and DirectWrite is a COM nightmare.
 
 ## Technical details
 ### Overview
@@ -48,6 +54,6 @@ It is a well established demoscene intro category.
 Why remain being alive?
 
 ## Links
-- [Development streams in Russian](https://www.youtube.com/playlist?list=PLP0z1CQXyu5BIjKpqCIigkdj2uZCom9G4) -- this was lazily developed from scratch live in 7 streams a few hours each.
+- [Development streams in Russian](https://www.youtube.com/playlist?list=PLP0z1CQXyu5BIjKpqCIigkdj2uZCom9G4) -- initial PoC was lazily developed from scratch live in 7 streams a few hours each.
 - [Alacritty](https://github.com/alacritty/alacritty) -- a serious, functionally complete multiplatform pseudoterminal that I use daily.
 - [refterm](https://github.com/cmuratori/refterm/) -- another attempt at minimalistic terminal, with completely different goals.
