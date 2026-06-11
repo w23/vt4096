@@ -63,6 +63,7 @@ static void handleWmChar(WPARAM wparam, LPARAM lparam) {
 }
 
 static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	const char* shell_cmd = NULL;
 	switch (msg) {
 	case WM_USER_RESIZE:
 		userResize(LOWORD(lparam), HIWORD(lparam));
@@ -83,22 +84,49 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	case WM_SIZE: {
 		const unsigned int width = (unsigned int)(lparam & 0xffff), height = (unsigned int)(lparam >> 16);
 		resize(width, height);
-		break;
+		return 0;
 	}
-	case WM_DESTROY: PostQuitMessage(0); break;
+	case WM_DESTROY: PostQuitMessage(0); return 0;
 	case WM_CLOSE: ExitProcess(0); break;
+	case WM_SYSKEYDOWN:
+		// F10 is a special system key it seems
+		switch (wparam) {
+		case VK_F10: shell_cmd = "\x1b[21~"; break;
+		}
+		break;
 	case WM_KEYDOWN:
 		switch (wparam) {
-		case VK_UP: shellWrite("\x1b[1A", -1); return 0;
-		case VK_DOWN: shellWrite("\x1b[1B", -1); return 0;
-		case VK_RIGHT: shellWrite("\x1b[1C", -1); return 0;
-		case VK_LEFT: shellWrite("\x1b[1D", -1); return 0;
+		case VK_UP: shell_cmd = "\x1b[A"; break;
+		case VK_DOWN: shell_cmd = "\x1b[B"; break;
+		case VK_RIGHT: shell_cmd = "\x1b[C"; break;
+		case VK_LEFT: shell_cmd = "\x1b[D"; break;
+		case VK_HOME: shell_cmd = "\x1b[1~"; break;
+		case VK_INSERT: shell_cmd = "\x1b[2~"; break;
+		case VK_DELETE: shell_cmd = "\x1b[3~"; break;
+		case VK_END: shell_cmd = "\x1b[4~"; break;
+		case VK_PRIOR: shell_cmd = "\x1b[5~"; break;
+		case VK_NEXT: shell_cmd = "\x1b[6~"; break;
+		case VK_F1: shell_cmd = "\x1bOP"; break;
+		case VK_F2: shell_cmd = "\x1bOQ"; break;
+		case VK_F3: shell_cmd = "\x1bOR"; break;
+		case VK_F4: shell_cmd = "\x1bOS"; break;
+		case VK_F5: shell_cmd = "\x1b[15~"; break;
+		case VK_F6: shell_cmd = "\x1b[17~"; break;
+		case VK_F7: shell_cmd = "\x1b[18~"; break;
+		case VK_F8: shell_cmd = "\x1b[19~"; break;
+		case VK_F9: shell_cmd = "\x1b[20~"; break;
+		case VK_F11: shell_cmd = "\x1b[23~"; break;
+		case VK_F12: shell_cmd = "\x1b[24~"; break;
 		}
-		// passthrough
-	default: return DefWindowProc(hwnd, msg, wparam, lparam);
+		break;
 	}
 
-	return 0;
+	if (shell_cmd) {
+		shellWrite(shell_cmd, -1);
+		return 0;
+	}
+
+	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
 #ifdef _DEBUG

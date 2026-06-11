@@ -4,6 +4,7 @@
 - [x] "Litterae Finis" doesn't even start (resizes window somehow, and then exits)
 - [ ] nvim editing doesn't show some symbols sometimes.
 - [ ] threading model is wack -- only one mutex that doesn't really protect anything. fix it.
+- [x] arrow keys visually erase
 
 ### Just enough VT100/ANSI ESC sequences support
 - [x] DEBUG -- show unsupported ESC sequences in debug 
@@ -15,13 +16,13 @@
 ### Input
 - [x] how to tell shell the grid size? -- resize pseudo terminal func
 - [x] Cursor movement / arrow keys
-- [ ] home, end
-- [ ] PgUp, PgDn
-- [ ] DEL
+- [x] home, end
+- [x] PgUp, PgDn
+- [x] DEL
 - [ ] Ctrl+C (Z, ...)
-- [ ] ESC
-- [ ] F1-F12
-- [ ] Ins
+- [x] ESC
+- [x] F1-F12
+- [x] Ins
 - [ ] .. what else?
 
 ### Misc
@@ -29,7 +30,7 @@
 - [ ] Display cursor (with different modes)
     - [x] simple block
     - [ ] use fg color for block, invert fg/bg colors for char?
-- [ ] `exit` -- detect when child process dies
+- [x] `exit` -- detect when child process dies
 - [x] Window resize
 - [ ] SGR 4/24: underline -- LickWeed TMDC entry "needs" this
 

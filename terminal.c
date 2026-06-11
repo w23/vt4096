@@ -622,7 +622,6 @@ void terminalWrite(const char* string, int len) {
 	for (int i = 0; i < len; ++i) {
 		const u8 c = string[i];
 
-
 		switch (c) {
 			case '\r': grid.cursor.col = 0; break;
 			case '\n': newline(); break;
@@ -631,13 +630,12 @@ void terminalWrite(const char* string, int len) {
 			case '\b':
 				if (grid.cursor.col > 0) {
 					grid.cursor.col--;
-					grid.glyphs[cursorOffset()] = (AtlasGlyph){0};
+					// Nondestructive, should not erase
 				}
 			break;
 			case '\x1b': i += handleEsc(string + i + 1, len - i - 1); break;
 			default:
 				i += readCodepoint(string + i, len - i);
-			
 		}
 	}
 
