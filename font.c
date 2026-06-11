@@ -32,7 +32,7 @@
 
 #define ATLAS_WIDTH_GLYPHS 64
 #define ATLAS_HEIGHT_GLYPHS 64
-#define MAX_UNICODE_CODEPOINTS 65536
+#define MAX_UNICODE_CODEPOINTS (0x10ffff+1)
 
 Font font;
 
@@ -140,7 +140,6 @@ void fontInit(void) {
 }
 
 GlyphPos fontGetGlyphPos(u32 codepoint) {
-	assert(codepoint < MAX_UNICODE_CODEPOINTS);
 	if (codepoint >= MAX_UNICODE_CODEPOINTS) {
 		return fontGetGlyphPos('?');
 	}
