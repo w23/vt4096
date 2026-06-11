@@ -33,10 +33,8 @@ static wchar_t surrogate[2] = {0};
 static void handleWmChar(WPARAM wparam, LPARAM lparam) {
 	(void)lparam;
 	const wchar_t wchar = (wchar_t)wparam;
-	if (wchar == '\r') {
-		shellWrite("\r", 1);
 	// OH WINDOWS WHY ARE YOU SO ~
-	} else if (wchar == '\b') /* Backspace */ {
+	if (wchar == '\b') /* Backspace */ {
 		shellWrite("\x7f", 1);
 	} else if (wchar == '\x7f') /* Ctrl+Backspace */ {
 		shellWrite("\b", 1);

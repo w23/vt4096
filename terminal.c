@@ -119,7 +119,7 @@ static int performCsiPrivate(int num, int enable) {
 		// No paste support yet, ignore.
 		break;
 	case 9001:
-		// win32-input-mode
+		// win32-input-mode, needed for extra key combination support, e.g. Shift+Enter
 		// see https://github.com/microsoft/terminal/blob/main/doc/specs/%234999%20-%20Improved%20keyboard%20handling%20in%20Conpty.md
 		break;
 	default:
