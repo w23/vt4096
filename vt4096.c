@@ -121,8 +121,9 @@ int WinMainCRTStartup(void) {
 	RegisterClassExW(&wndclass);
 
 	fontInit();
-	const int w = 80 * font.charWidth;
-	const int h = 32 * font.charHeight;
+	terminalInit();
+	const int w = grid.cols * font.charWidth;
+	const int h = grid.rows * font.charHeight;
 
 	RECT r = { 0, 0, w, h };
 	AdjustWindowRectEx(&r, windowStyle, FALSE, 0);
@@ -136,11 +137,6 @@ int WinMainCRTStartup(void) {
 		NULL, NULL, hInstance, NULL);
 
 	renderInit();
-
-	terminalInit();
-	resize(w, h);
-	terminalClear();
-
 	shellCreate(grid.cols, grid.rows, "cmd.exe");
 
 	ShowWindow(mainWindow, nCmdShow);

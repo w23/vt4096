@@ -6,7 +6,16 @@
 #include <assert.h>
 #include <string.h> // strlen
 
-Grid grid = { 0 };
+#define DEFAULT_COLS 80
+#define DEFAULT_ROWS 32
+
+Grid grid = {
+	// Makes Crinkler run out of memory and crash
+	// TODO Report this
+	//.cols = DEFAULT_COLS,
+	//.rows = DEFAULT_ROWS,
+	0
+};
 
 #define ESC '\x1b'
 
@@ -42,13 +51,15 @@ static struct {
 	RGBA color, bg;
 	int swapped;
 
-	CRITICAL_SECTION mutex;
+	//CRITICAL_SECTION mutex;
 } term;
 
 void terminalInit(void) {
-	InitializeCriticalSection(&term.mutex);
+	//InitializeCriticalSection(&term.mutex);
 	term.color = kDefaultForegroundColor;
 	term.bg = kDefaultBackgroundColor;
+	grid.rows = DEFAULT_ROWS;
+	grid.cols = DEFAULT_COLS;
 
 	// Generate color table
 	RGBA* color = gColorTable + 16;
@@ -114,6 +125,11 @@ static void newline(void) {
 	}
 	// TODO do we need to clear new row?
 }
+
+static void tab(void) {
+	grid.cursor.col = clampi(8 * (grid.cursor.col / 8 + 1), 0, grid.cols);
+}
+
 
 // Private commands
 static int performCsiPrivate(int num, int enable) {
@@ -368,7 +384,7 @@ static void handleCSICommand(u8 cmd, int argc, const int argv[]) {
 		break;
 	case 'l':
 		// Cursor Horizontal (Forward) Tab
-		grid.cursor.col = 8 * (grid.cursor.col / 8 + 1);
+		tab();
 		break;
 	case 'X':
 		// Erase Character
@@ -534,7 +550,7 @@ unhandled:
 
 // s points to the next char after ESC
 // returns number of glyphs consumed
-static int handleEsc(char* s, int len) {
+static int handleEsc(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
@@ -561,99 +577,70 @@ static void outputCodepoint(u32 codepoint) {
 	grid.cursor.col++;
 }
 
+static int readCodepoint(const char *s, int len) {
+	const u8 c = s[0];
+	u32 codepoint = 0;
+
+	int i = 1;
+	if ((c & 0x80) == 0) {
+		codepoint = c;
+	} else {
+		if ((c >> 5) == 0x6) {
+			// 2-byte sequence
+			codepoint = c & 0x1f;
+		}
+		else if ((c >> 4) == 0xe) {
+			// 3-byte sequence
+			codepoint = c & 0x0f;
+		}
+		else if ((c >> 3) == 0x1e) {
+			// 4-byte sequence
+			codepoint = c & 0x07;
+		}
+
+		// Assume well-formed utf-8 with correct sequence length
+		for (; i < len; ++i) {
+			const u8 c2 = s[i];
+			if ((c2 >> 6) != 0x02)
+				break;
+			codepoint = (codepoint << 6) | (c2 & 0x3f);
+		}
+	}
+
+	outputCodepoint(codepoint);
+	return i - 1;
+}
+
 // Expects `string` to be complete and sufficient, e.g. no ESC breaks, no UTF8 breaks.
 void terminalWrite(const char* string, int len) {
-	EnterCriticalSection(&term.mutex);
+	//EnterCriticalSection(&term.mutex);
 	if (len < 0)
 		len = (int)strlen(string);
 
 	//debugPrintf("terminalWrite(\"%.*s\"\n", len, string);
 
-	u32 codepoint = 0;
-	int utf8_left = 0;
 	for (int i = 0; i < len; ++i) {
 		const u8 c = string[i];
 
-		if (utf8_left > 0) {
-			int err = 0;
-			if ((c >> 6) != 0x02) {
-				debugPrintf("Unexpected UTF-8 continuation code '%c' (%02x)\n", c, c);
-				utf8_left = 0;
-				err = 1;
-			} else {
-				codepoint = (codepoint << 6) | (c & 0x3f);
-				utf8_left--;
-			}
 
-			if (utf8_left == 0) {
-				//debugPrintf("Print codepoint %04x %w\n", codepoint, codepoint);
-				outputCodepoint(codepoint);
-				codepoint = 0;
-				if (err == 0)
-					continue;
-			}
-		}
-
-		if (c == '\r') {
-			grid.cursor.col = 0;
-			continue;
-		}
-
-		if (c == '\n') {
-			newline();
-			continue;
-		}
-
-		if (c == '\t') {
-			grid.cursor.col = 8 * (grid.cursor.col / 8 + 1);
-			continue;
-		}
-
-		if (c == '\a') {
-			// TODO DING!!~
-			continue;
-		}
-
-		if (c == '\b') {
-			if (grid.cursor.col > 0) {
-				grid.cursor.col--;
-				grid.glyphs[cursorOffset()] = (AtlasGlyph){0};
-			}
-			continue;
-		}
-
-		if (c == '\x1b') {
-			i += handleEsc((char*)string + i + 1, len - i - 1);
-			continue;
-		}
-
-		if ((c & 0x80) == 0) {
-			outputCodepoint(c);
-			continue;
-		}
-
-		if ((c >> 5) == 0x6) {
-			// 2-byte sequence
-			codepoint = c & 0x1f;
-			utf8_left = 1;
-			continue;
-		}
-
-		if ((c >> 4) == 0xe) {
-			// 3-byte sequence
-			codepoint = c & 0x0f;
-			utf8_left = 2;
-			continue;
-		}
-
-		if ((c >> 3) == 0x1e) {
-			// 4-byte sequence
-			codepoint = c & 0x07;
-			utf8_left = 3;
-			continue;
+		switch (c) {
+			case '\r': grid.cursor.col = 0; break;
+			case '\n': newline(); break;
+			case '\t': tab(); break;
+			case '\a': /* TODO DING!!~ */ break;
+			case '\b':
+				if (grid.cursor.col > 0) {
+					grid.cursor.col--;
+					grid.glyphs[cursorOffset()] = (AtlasGlyph){0};
+				}
+			break;
+			case '\x1b': i += handleEsc(string + i + 1, len - i - 1); break;
+			default:
+				i += readCodepoint(string + i, len - i);
+			
 		}
 	}
 
 	grid.dirty = 1;
-	LeaveCriticalSection(&term.mutex);
+	//LeaveCriticalSection(&term.mutex);
 }
