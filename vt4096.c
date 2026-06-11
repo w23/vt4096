@@ -116,6 +116,14 @@ int WinMainCRTStartup(void) {
 	return 0;
 }
 
+void windowSetTitle(const char* s, int len) {
+	wchar_t buffer[256];
+	int conv = MultiByteToWideChar(CP_UTF8, 0, s, len, buffer, sizeof(buffer) - 1);
+	if (conv < 0) conv = 0;
+	buffer[conv] = 0;
+	SetWindowTextW(mainWindow, buffer);
+}
+
 void windowResize(int cols, int rows) {
 	(void)cols; (void)rows;
 	debugPrintf("windowResize(%d, %d) not implemented\n", cols, rows);

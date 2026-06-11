@@ -49,4 +49,5 @@ void terminalClear(void);
 void terminalWrite(const char* string, int len);
 
 // Callback functions
+void windowSetTitle(const char* s, int len);
 void windowResize(int cols, int rows);

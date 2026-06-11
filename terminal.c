@@ -99,21 +99,50 @@ static void newline(void) {
 	// TODO do we need to clear new row?
 }
 
+// Private commands
+static int performCsiPrivate(int num, int enable) {
+	switch (num) {
+	case 25: // Show-hide cursor
+		// TODO preserve old shape?
+		grid.cursor.shape = enable ? CursorShape_Block : CursorShape_Hidden;
+		break;
+	case 1004:
+		// Focus tracking. cmd.exe sends this.
+		// TODO: https://terminfo.dev/modes/decset-1004-focus-tracking
+		break;
+	case 1049:
+		// Alternate screen buffer. neovim uses this
+		// TODO: https://terminfo.dev/modes/decset-1049-alt-screen-enter
+		break;
+	case 2004:
+		// Bracketed paste. Neovim uses this.
+		// No paste support yet, ignore.
+		break;
+	case 9001: // cmd.exe sends this to set the terminal to default 80x25 size
+		windowResize(80, 25);
+		break;
+	default:
+		return 0;
+	}
+	return 1;
+}
+
 static int handleCSIQuestion(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
 	{
-		int arg = 0;
+		int num = 0;
 		int i = 0;
 		for (; i < len; ++i) {
 			const char c = s[i];
 			if (c >= '0' && c <= '9') {
-				arg = arg * 10 + c - '0';
-			} else if (arg == 25) {
-				const int hide = (c == 'l');
-				grid.cursor.shape = hide ? CursorShape_Hidden : CursorShape_Block;
-				return i + 1;
+				num = num * 10 + c - '0';
+			} else if (c == 'l' || c == 'h') {
+				const int enable = (c == 'h');
+				if (performCsiPrivate(num, enable))
+					return i + 1;
+				break;
 			}
 		}
 	}
@@ -394,21 +423,59 @@ unhandled:
 	return printCSI(s, len);
 }
 
-static int handleOperatingSystemCommand(char* s, int len) {
+static int performOsc(int Pt, const char* Ps, int PsLen) {
+	if (PsLen < 0)
+		return 0;
+
+	switch (Pt) {
+	case 0:
+		windowSetTitle(Ps, PsLen);
+		break;
+	case 9001:
+		// cmd.exe sends this on e.g. unknown commands; ignore.
+		break;
+	default:
+		return 0;
+	}
+	return 1;
+}
+
+static int handleOperatingSystemCommand(const char* s, int len) {
 	if (len == 0)
 		return 0;
 
-	if (s[0] == '0') {
-		// Set window title
-		for (int i = 2; i < len; ++i) {
+	{
+		int Ps = 0;
+		int i = 0;
+		for (; i < len; ++i) {
+			const u8 c = s[i];
+			if (c >= '0' && c <= '9') {
+				Ps = Ps * 10 + c - '0';
+				continue;
+			}
+			if (c == ';') {
+				i++;
+				break;
+			}
+			goto unhandled;
+		}
+		int PtBegin = i, PtEnd = 0;
+		for (; i < len; ++i) {
 			if (s[i] == 0x07 || s[i] == 0x9c) {
-				s[i] = '\0';
-				SetWindowTextA(mainWindow, s + 2); // s+2 skips '0;'
-				return i + 1;
+				PtEnd = i;
+				++i; // consume
+				break;
+			}
+		}
+
+		if (PtEnd > PtBegin) {
+			if (performOsc(Ps, s + PtBegin, PtEnd - PtBegin)) {
+				return i;
 			}
 		}
 	}
 
+unhandled:
 	// DEBUG
 	debugPrintf("ESC OSC ");
 	int i;
