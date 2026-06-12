@@ -34,8 +34,10 @@
 #define ATLAS_HEIGHT_GLYPHS 64
 #define MAX_UNICODE_CODEPOINTS (0x10ffff+1)
 
+#pragma data_seg(".font.font")
 Font font;
 
+#pragma data_seg(".font.g")
 static struct {
 	HDC dc;
 
@@ -47,6 +49,17 @@ static struct {
 	} cache[MAX_UNICODE_CODEPOINTS];
 } g;
 
+#pragma data_seg(".font.bitmap_info")
+static BITMAPINFO bitmap_info = {
+	.bmiHeader = {
+		.biSize = sizeof(BITMAPINFOHEADER),
+		.biPlanes = 1,
+		.biBitCount = 32,
+		.biCompression = BI_RGB,
+	},
+};
+
+#pragma code_seg(".font.init")
 void fontInit(void) {
 #ifdef USE_TERMINAL_FONT
 	const HFONT hfont = CreateFontW(
@@ -85,16 +98,8 @@ void fontInit(void) {
 	font.atlasWidth = ATLAS_WIDTH_GLYPHS * font.charWidth;
 	font.atlasHeight = ATLAS_HEIGHT_GLYPHS * font.charHeight;
 
-	const BITMAPINFO bitmap_info = {
-		.bmiHeader = {
-			.biSize = sizeof(BITMAPINFOHEADER),
-			.biWidth = font.atlasWidth,
-			.biHeight = font.atlasHeight,
-			.biPlanes = 1,
-			.biBitCount = 32,
-			.biCompression = BI_RGB,
-		},
-	};
+	bitmap_info.bmiHeader.biWidth = font.atlasWidth;
+	bitmap_info.bmiHeader.biHeight = font.atlasHeight;
 
 	const HBITMAP dib = CreateDIBSection(g.dc, &bitmap_info, DIB_RGB_COLORS, &font.atlasBits, NULL, 0);
 	SelectObject(g.dc, dib);
@@ -139,6 +144,7 @@ void fontInit(void) {
 	font.dirty = 1;
 }
 
+#pragma code_seg(".font.getglyph")
 GlyphPos fontGetGlyphPos(u32 codepoint) {
 	if (codepoint >= MAX_UNICODE_CODEPOINTS) {
 		return fontGetGlyphPos('?');

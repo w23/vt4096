@@ -9,6 +9,7 @@
 #define DEFAULT_COLS 80
 #define DEFAULT_ROWS 32
 
+#pragma data_seg(".terminal.grid")
 Grid grid = {
 	// Makes Crinkler run out of memory and crash
 	// TODO Report this
@@ -19,9 +20,11 @@ Grid grid = {
 
 #define ESC '\x1b'
 
+#pragma data_seg(".terminal.color.defaults")
 static const RGBA kDefaultForegroundColor = { 255, 255, 255, 255 };
 static const RGBA kDefaultBackgroundColor = { 0 };
 
+#pragma data_seg(".terminal.color.table")
 static RGBA gColorTable[256] = {
 	// 0 - 7
 	{.r = 0, .g = 0, .b = 0, .a = 255},
@@ -47,6 +50,7 @@ static RGBA gColorTable[256] = {
 	// TODO is table generation really smaller than just having it here as a constant?
 };
 
+#pragma data_seg(".terminal.term")
 static struct {
 	RGBA color, bg;
 	int swapped;
@@ -54,6 +58,7 @@ static struct {
 	//CRITICAL_SECTION mutex;
 } term;
 
+#pragma code_seg(".terminal.init")
 void terminalInit(void) {
 	//InitializeCriticalSection(&term.mutex);
 	term.color = kDefaultForegroundColor;
@@ -73,6 +78,7 @@ void terminalInit(void) {
 	}
 }
 
+#pragma code_seg(".terminal.clear")
 void terminalClear(void) {
 	grid.top_row = 0;
 	grid.dirty = 1;
@@ -83,6 +89,7 @@ void terminalClear(void) {
 	}
 }
 
+#pragma code_seg(".terminal.resize")
 void terminalResize(unsigned int w, unsigned int h) {
 	assert(w < MAX_GRID_WIDTH);
 	assert(h < MAX_GRID_HEIGHT);
@@ -225,7 +232,7 @@ static void performCSIEraseInDisplay(int n) {
 	}
 }
 
-int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
+static int performCsiSgrColorEx(RGBA *out, int argc, const int argv[]) {
 	switch (argv[0]) {
 	case 5: // table color
 		if (argc != 2) {
@@ -612,10 +619,12 @@ static int readCodepoint(const char *s, int len) {
 }
 
 // Expects `string` to be complete and sufficient, e.g. no ESC breaks, no UTF8 breaks.
+#pragma code_seg(".terminal.write")
 void terminalWrite(const char* string, int len) {
 	//EnterCriticalSection(&term.mutex);
-	if (len < 0)
-		len = (int)strlen(string);
+	assert(len >= 0);
+	// if (len < 0)
+	// 	len = (int)strlen(string);
 
 	//debugPrintf("terminalWrite(\"%.*s\"\n", len, string);
 

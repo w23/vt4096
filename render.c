@@ -108,10 +108,11 @@ static GLint compileShader(GLuint type, const char* src) {
 }
 #endif
 
+#pragma data_seg(".render.grid.glsl")
 #include "grid.h"
 
 //GLint makeProgram(const char* vert, const char* frag) {
-GLint makeProgram(const char* frag) {
+static GLint makeProgram(const char* frag) {
 #ifdef _DEBUG
 	const GLint pid = glCreateProgram();
 //	glAttachShader(pid, compileShader(GL_VERTEX_SHADER, vert));
@@ -170,27 +171,29 @@ static void checkGLError(const char* file, int line, const char* func) {
 #define GL_CHECK()
 #endif
 
+#pragma data_seg(".render.pfd")
 static const PIXELFORMATDESCRIPTOR kPfd = { sizeof(kPfd), 0,
 	PFD_DOUBLEBUFFER | PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0 };
 
+#pragma code_seg(".render.init")
 void renderInit(void) {
 	render.hdc = GetDC(mainWindow);
 
 	SetPixelFormat(render.hdc, ChoosePixelFormat(render.hdc, &kPfd), &kPfd);
-	HGLRC hglrc = wglCreateContext(render.hdc);
+	const HGLRC hglrc = wglCreateContext(render.hdc);
 	wglMakeCurrent(render.hdc, hglrc);
 	loadGLFuncs();
 
 	glGenTextures(Tex_COUNT, render.textures);
 
 	const GLint prog = makeProgram(grid_glsl);
+	glUseProgram(prog);
+
 	render.uniform_resolution = glGetUniformLocation(prog, "R");
 	render.uniform_gridSize = glGetUniformLocation(prog, "I");
 	render.uniform_topRow = glGetUniformLocation(prog, "T");
 	render.uniform_cursor = glGetUniformLocation(prog, "U");
-
-	glUseProgram(prog);
 
 #ifdef _DEBUG
 #define X(t, SN) { \
@@ -214,6 +217,7 @@ glUniform1i(glGetUniformLocation(prog, #SN), Tex##t);
 	GL_CHECK();
 }
 
+#pragma code_seg(".render.resize")
 void renderResize(int w, int h) {
 	glViewport(0, 0, w, h);
 	GL_CHECK();
@@ -223,6 +227,7 @@ void renderResize(int w, int h) {
 	GL_CHECK();
 }
 
+#pragma code_seg(".render.paint")
 void renderPaint(void) {
 	GL_CHECK();
 	if (font.dirty) {

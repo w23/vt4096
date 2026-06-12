@@ -129,6 +129,12 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
+static WNDCLASSEX wndclass = {
+	.cbSize = sizeof(wndclass),
+	.lpszClassName = TEXT("V"),
+	.lpfnWndProc = wndProc,
+};
+
 #ifdef _DEBUG
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow) {
 	(void)hPrevInstance; (void)lpCmdLine;
@@ -137,15 +143,9 @@ int WinMainCRTStartup(void) {
 	const HINSTANCE hInstance = GetModuleHandle(NULL);
 	const int nCmdShow = SW_NORMAL;
 #endif
-	const WNDCLASSEX wndclass = {
-		.cbSize = sizeof(wndclass),
-		.lpszClassName = TEXT("VT4096"),
-		.lpfnWndProc = wndProc,
-		.hInstance = hInstance, // TODO NULL
-	};
 	// -W version makes WM_CHAR report UTF-16 chars
 	// -A version would make it UTF-8 (unless user has specified a different code page)
-	// TODO figure out if UTF-8 would suffice without manifest
+	wndclass.hInstance = hInstance;
 	RegisterClassExW(&wndclass);
 
 	fontInit();

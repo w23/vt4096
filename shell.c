@@ -89,7 +89,7 @@ static void loadFuncs(void) {
 	UpdateProcThreadAttribute_ = (fn_UpdateProcThreadAttribute)(void*)GetProcAddress(hMod, "UpdateProcThreadAttribute");
 }
 
-void PrepareStartupInformation(HPCON hpc, STARTUPINFOEXA* psi) {
+static void PrepareStartupInformation(HPCON hpc, STARTUPINFOEXA* psi) {
 	loadFuncs();
 
 	SIZE_T bytesRequired = 0;
@@ -137,9 +137,12 @@ static void CALLBACK processDiedCallback(LPVOID param, BOOLEAN timerOrWaitFired)
 	ExitProcess(0);
 }
 
+#pragma data_seg(".shell.sie")
+static STARTUPINFOEXA sie = { .StartupInfo.cb = sizeof(sie), };
+
+#pragma code_seg(".shell.create")
 void shellCreate(int cols, int rows, char *shell_exe) {
 	createConsole((COORD){(SHORT)cols, (SHORT)rows});
-	STARTUPINFOEXA sie = { .StartupInfo.cb = sizeof(sie), };
 	PrepareStartupInformation(shell.hPC, &sie);
 
 	PROCESS_INFORMATION pi = { 0 };
@@ -162,10 +165,12 @@ void shellCreate(int cols, int rows, char *shell_exe) {
 
 }
 
+#pragma code_seg(".shell.resize")
 void shellResize(int cols, int rows) {
 	ResizePseudoConsole(shell.hPC, (COORD){(SHORT)cols, (SHORT)rows});
 }
 
+#pragma code_seg(".shell.write")
 void shellWrite(const char* str, int len) {
 	if (len < 0)
 		len = strlen(str);

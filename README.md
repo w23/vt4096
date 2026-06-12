@@ -3,8 +3,7 @@
 This repo is a proof of concept that it is possible to make a useful (for some definition of useful) terminal app for Windows in less than 4 kilobytes.
 
 ## Features
-- [ ] Final release executable file is smaller than 4096 bytes.
-    - >100 bytes larger after recent 256 color table fixes (required in Windows 11).
+- [x] Final release executable file is smaller than 4096 bytes. As of 2026-06-11 it is 4032 bytes (`Compress` target with slow Crinkler)
 - [x] Absolutely no error checks or error messages whatsoever in Release mode.
 - [x] Unicode output support.
 - [x] Basic support for minimalistic subset of VT100/ANSI ESC sequences: cursor positioning, clear, color.
@@ -20,7 +19,7 @@ This repo is a proof of concept that it is possible to make a useful (for some d
 ## TODO
 - [ ] Functional and extra keys support.
 - [ ] Better VT100/ESC parser -- empirically figure out the minimal subset to support more apps, and to fix existing glitches. Run more demos.
-- [ ] Actually work on binary size. Zero effort had been spent on it being small.
+- [x] Actually work on binary size. ~~Zero~~ Some effort had been spent on it being small.
 - [ ] Wide Unicode glyphs support.
 - [ ] Fallback font support for emojis, etc.
 - [ ] Run arbitrary programs specified by a CLI arg.
