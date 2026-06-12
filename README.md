@@ -93,6 +93,10 @@ to avoid that, but I was lazy -- minification step was added later, after the sh
 ### Why 4 kilobytes? 
 It is a well established demoscene intro category.
 
+### It eats up 1GiB of RAM at runtime! Less than 4k, my ass!
+It is a well known behavior of Crinkler. It has a sophisticated code-dense decompressor that needs A LOT of RAM to run, so it will basically allocate 1G at startup even before any of the user code is ran, and will not free it, because why would you do that.
+The terminal itself needs a just a few tens of megs, and even that is just because I avoid dynamic allocations and preallocate everything statically for reasonable headroom. You can verify that by running it in debug mode.
+
 ### Why even?
 Why remain being alive?
 
