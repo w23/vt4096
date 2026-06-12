@@ -80,7 +80,7 @@ to avoid that, but I was lazy -- minification step was added later, after the sh
 - `render.c` -- provides OpenGL-based grid rendering
     - Consumes `font.c` atlas bitmap, uploads it into OpenGL texture.
     - Consumes `terminal.c` grid, uploading it into OpenGL textures.
-    - Uses `grid.glsl` (minified into `grid.h`) shader to render the grid based on the above textures.
+    - Uses `grid.glsl` (minified into `grid.h`) fullscreen fragment shader to render the grid based on the above textures. It determines current cell index based on pixel coordinates, and then samples corresponding glyph reference and colors textures.
 - `shell.c` -- ConPTY and shell IPC.
     - Creates and maintains windows pseudo console with communication pipes.
     - Launches `cmd.exe` (hardcoded in `vt4096.c`) shell process under the pseudo console.
